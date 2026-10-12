@@ -80,6 +80,51 @@ def resting_hr(day: str, payload: dict[str, Any] | None) -> dict[str, Any] | Non
     return None
 
 
+def heart_rate_day(day: str, payload: dict[str, Any] | None, bucket_minutes: int = 30) -> dict[str, Any] | None:
+    """All-day heart rate reduced to min/max/avg per local-time bucket. None when there is no reading that day.
+
+    `heartRateValues` holds [epoch ms GMT, bpm or null] pairs about every 2 minutes; they are shifted to local
+    wall-clock time with the offset between the payload's local and GMT start timestamps before bucketing.
+    Rows are compact lists in the order given by `columns`.
+    """
+    if not payload:
+        return None
+    start_local, start_gmt = payload.get("startTimestampLocal"), payload.get("startTimestampGMT")
+    offset = (
+        start_local - start_gmt if isinstance(start_local, int | float) and isinstance(start_gmt, int | float) else 0
+    )
+    buckets: dict[int, list[float]] = {}
+    readings: list[float] = []
+    for pair in payload.get("heartRateValues") or []:
+        if not isinstance(pair, list | tuple) or len(pair) < 2:
+            continue
+        ts, bpm = pair[0], pair[1]
+        if not isinstance(ts, int | float) or isinstance(bpm, bool) or not isinstance(bpm, int | float):
+            continue
+        local = datetime.fromtimestamp((ts + offset) / 1000, UTC)
+        start = (local.hour * 60 + local.minute) // bucket_minutes * bucket_minutes
+        buckets.setdefault(start, []).append(bpm)
+        readings.append(bpm)
+    if not readings:
+        return None
+    rows = [
+        [f"{start // 60:02d}:{start % 60:02d}", min(vals), max(vals), round(sum(vals) / len(vals))]
+        for start, vals in sorted(buckets.items())
+    ]
+    return _clean(
+        {
+            "date": payload.get("calendarDate") or day,
+            "resting_hr": payload.get("restingHeartRate"),
+            "min_hr": payload.get("minHeartRate") if payload.get("minHeartRate") is not None else min(readings),
+            "max_hr": payload.get("maxHeartRate") if payload.get("maxHeartRate") is not None else max(readings),
+            "avg_hr": round(sum(readings) / len(readings), 1),
+            "bucket_minutes": bucket_minutes,
+            "columns": ["time", "min", "max", "avg"],
+            "readings": rows,
+        }
+    )
+
+
 def vo2max_entries(payload: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
     """One entry per date that has a VO2 max value: running/generic and, when present, cycling."""
     out: list[dict[str, Any]] = []

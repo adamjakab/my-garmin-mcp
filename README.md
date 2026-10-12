@@ -18,6 +18,7 @@ What the `garminconnect` library can reach, and which parts this server exposes.
 | Sleep data | Yes (`get_sleep`) |
 | Heart rate variability (HRV) | Yes (`get_hrv`) |
 | Resting heart rate | Yes (`get_resting_hr`) |
+| All-day heart rate | Yes (`get_heart_rate`) |
 | VO2 max | Yes (`get_vo2max`) |
 | Weight | Yes (`get_weight`) |
 | Activity lists | Yes (`get_activities`) |
@@ -32,7 +33,6 @@ What the `garminconnect` library can reach, and which parts this server exposes.
 | &nbsp;&nbsp;↳ Weather | Yes (extra `weather`) |
 | &nbsp;&nbsp;↳ Gear used | Yes (extra `gear`) |
 | Daily summary, steps, floors | No |
-| All-day heart rate | No |
 | Stress, body battery | No |
 | Respiration, SpO2 | No |
 | Intensity minutes | No |

@@ -8,6 +8,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 MAX_DAYS_PER_DAY_TOOLS = 31
 MAX_DAYS_SINGLE_REQUEST = 366
 MAX_DAYS_ACTIVITIES = 92
+MAX_DAYS_HEART_RATE = 3  # each day returns a full time series
 CONCURRENCY = 3
 
 

@@ -17,3 +17,20 @@ The README coverage table lists "All-day heart rate" as "No", and `work/future-i
 - On completion: update the README coverage table, add tests (extract unit tests and the end-to-end MCP client test), and bump the version in `pyproject.toml` and `__version__` in `src/my_garmin_mcp/__init__.py`, then run `uv lock`.
 
 Depends on: none
+
+## Outcome
+
+> Implemented: 2026-10-12
+
+Added the `get_heart_rate` tool (`src/my_garmin_mcp/tools/heart_rate.py`, registered in `tools/__init__.py`). It returns per-day min/max/resting/avg plus readings bucketed into local-time windows (default 30 min, 5-120 allowed) as `[HH:MM, min, max, avg]` rows, shaped by `heart_rate_day` in `garmin/extract.py`. A call covers at most 3 days (`MAX_DAYS_HEART_RATE` in `garmin/dates.py`). Version bumped to 0.4.0; the README coverage table is updated.
+
+### Deviations from the plan
+
+Also updated `AGENTS.md` (tool count "eight" → "nine" and the tool list) so it does not go stale; the plan made this conditional.
+
+### Validation
+
+- `ruff check` and `ruff format --check`: pass.
+- `pytest` on test_extract, test_version, test_garmin_client, test_tools: 35 passed; `tests/test_e2e.py`: 4 passed.
+- No type checker is configured.
+- Not validated against real Garmin data (no credentials in this environment), so the payload shape (`heartRateValues`, `startTimestampGMT/Local`) is unverified against a live response.
