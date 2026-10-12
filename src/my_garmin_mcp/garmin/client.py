@@ -12,6 +12,7 @@ from garminconnect import (
     GarminConnectConnectionError,
     GarminConnectTooManyRequestsError,
 )
+from mcp.server.mcpserver.exceptions import ToolError
 
 log = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -25,8 +26,11 @@ LOGIN_COOLDOWN_SECONDS = 15 * 60
 MAX_AUTH_FAILURES = 3
 
 
-class GarminError(Exception):
-    """A Garmin failure with a message that is safe to show to Claude (never contains credentials)."""
+class GarminError(ToolError):
+    """A Garmin failure with a message that is safe to show to Claude (never contains credentials).
+
+    A ToolError, so the MCP server returns the message as a tool error instead of hiding it as a crash.
+    """
 
 
 class GarminClient:

@@ -17,7 +17,11 @@ def main() -> None:
             "Set MCP_ACCESS_KEY in .env (uv run rotate-key generates one)"
         )
     garmin = GarminClient(config.garmin_email, config.garmin_password, config.garmin_token_store)
-    uvicorn.run(create_app(access_key_verifier(config.access_key), garmin), host=config.host, port=config.port)
+    uvicorn.run(
+        create_app(access_key_verifier(config.access_key), garmin, config.allowed_hosts),
+        host=config.host,
+        port=config.port,
+    )
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ class Config:
     port: int
     host: str
     access_key: str | None
+    allowed_hosts: tuple[str, ...]
     data_dir: Path
     garmin_email: str | None
     garmin_password: str | None
@@ -25,6 +26,7 @@ def load_config() -> Config:
         port=int(env.get("PORT", "3334")),
         host=env.get("HOST", "127.0.0.1"),
         access_key=env.get("MCP_ACCESS_KEY") or None,
+        allowed_hosts=tuple(h.strip() for h in env.get("ALLOWED_HOSTS", "").split(",") if h.strip()),
         data_dir=Path(env.get("DATA_DIR", "data")).resolve(),
         garmin_email=env.get("GARMIN_EMAIL"),
         garmin_password=env.get("GARMIN_PASSWORD"),

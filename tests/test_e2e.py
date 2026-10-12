@@ -58,6 +58,17 @@ async def test_ping_with_valid_key(url):
     http = httpx.AsyncClient(headers={"Authorization": f"Bearer {KEY}"})
     async with http, Client(streamable_http_client(f"{url}/mcp", http_client=http)) as client:
         tools = await client.list_tools()
-        assert [t.name for t in tools.tools] == ["ping"]
+        assert sorted(t.name for t in tools.tools) == sorted(
+            [
+                "ping",
+                "get_sleep",
+                "get_hrv",
+                "get_resting_hr",
+                "get_vo2max",
+                "get_weight",
+                "get_activities",
+                "get_activity",
+            ]
+        )
         result = await client.call_tool("ping")
         assert "pong" in result.content[0].text
