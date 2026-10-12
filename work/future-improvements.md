@@ -1,6 +1,6 @@
 # Future improvements
 
-Notes, not committed work. Turn an item into a work item (`work/open/`) when it is picked up. The server itself is done (see [checklist.md](checklist.md)).
+Notes, not committed work. Turn an item into a work item (`work/open/`) when it is picked up.
 
 ## More Garmin data
 
