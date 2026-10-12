@@ -5,16 +5,16 @@ description: How to start, stop, restart and check the local my-garmin-mcp dev s
 
 # Local development environment
 
-The dev server is a background process controlled by `npm run server`. It listens on `http://127.0.0.1:3334/mcp` (`/health` is unauthenticated).
+The dev server is a background process controlled by `scripts/server.sh`. It listens on `http://127.0.0.1:3334/mcp` (`/health` is unauthenticated).
 
 ## Commands
 
-- `npm run server -- start` - start in the background (pid and log live in `.run/`)
-- `npm run server -- status` - running or stopped
-- `npm run server -- restart` - restart; needed after any code or `.env` change, because the server loads code and `.env` once at startup
-- `npm run server -- stop`
-- `npm run server -- logs` - tail the server log
-- `npm run dev` - foreground alternative with file watching, for the user's own terminal
+- `scripts/server.sh start` - start in the background (pid and log live in `.run/`)
+- `scripts/server.sh status` - running or stopped
+- `scripts/server.sh restart` - restart; needed after any code or `.env` change, because the server loads code and `.env` once at startup
+- `scripts/server.sh stop`
+- `scripts/server.sh logs` - tail the server log
+- `uv run python -m my_garmin_mcp` - foreground alternative, for the user's own terminal
 
 Check `status` (or `curl -s localhost:3334/health`) before starting, so a second copy is never launched.
 

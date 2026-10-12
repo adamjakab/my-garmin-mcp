@@ -4,24 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Scaffolded: a minimal MCP server (Node >= 24, TypeScript, Express, `@modelcontextprotocol/server` v2 (`client` as a dev dependency, used by tests)) with one `ping` tool and API-key auth. Garmin integration is not started yet.
+Scaffolded: a minimal MCP server (Python >= 3.12, managed with `uv`, official `mcp` SDK v2 `MCPServer`, Starlette/uvicorn) with one `ping` tool and API-key auth. Garmin integration is not started yet; it will use the `garminconnect` library (cyberjunky). The project was first scaffolded in Node/TypeScript and switched to Python because the best Garmin library is Python.
 
 ## Commands
 
-- `npm run dev` - foreground server with file watching (`tsx watch`)
-- `npm run server -- start|stop|restart|status|logs` - background server (pid/log in `.run/`); restart after code changes so the tool list refreshes
-- `npm run rotate-key` - asks for confirmation (warns that clients using the old key break), then writes a new `MCP_ACCESS_KEY` into `.env` and prints it. Restart afterwards (`pm2 restart my-garmin-mcp` in production). `--yes` skips the prompt
-- `npm run typecheck`, `npm test` (vitest, includes an end-to-end MCP client test), `npm run build` / `npm start`
+- `uv sync` - install dependencies into `.venv`
+- `uv run python -m my_garmin_mcp` - foreground server
+- `scripts/server.sh start|stop|restart|status|logs` - background server (pid/log in `.run/`); restart after code changes so the tool list refreshes
+- `uv run rotate-key` - asks for confirmation (warns that clients using the old key break), then writes a new `MCP_ACCESS_KEY` into `.env` and prints it. Restart afterwards (`pm2 restart my-garmin-mcp` in production). `--yes` skips the prompt
+- `uv run pytest` (includes an end-to-end MCP client test), `uv run ruff check .`, `uv run ruff format .`
 
 Config via `.env` (copy `.env.example`; gitignored): `PORT`, `HOST`, `DATA_DIR`, `GARMIN_EMAIL`, `GARMIN_PASSWORD`, `GARMIN_TOKEN_STORE`, `MCP_ACCESS_KEY` (the single access key). Real env vars override the file.
 
-Production runs under PM2 as `my-garmin-mcp` (assumed name, same as the project). After changing `.env` or deploying a build, restart it with `pm2 restart my-garmin-mcp`. `npm run server` is for local development only.
+Production runs under PM2 as `my-garmin-mcp` (assumed name, same as the project). After changing `.env` or deploying, restart it with `pm2 restart my-garmin-mcp`. `scripts/server.sh` is for local development only.
 
 ## Architecture
 
-- Streamable HTTP at `/mcp` via `createMcpHandler`, **stateless** (fresh server per request; small Express<->fetch bridge in `src/app.ts`), guarded by `Authorization: Bearer <key>`. `GET /health` is unauthenticated.
-- `src/tools/` - one file per tool, registered in `src/tools/index.ts`.
-- `src/auth/` - the single access key from `MCP_ACCESS_KEY` (compared as SHA-256 digests in constant time) and the bearer middleware. Changing the key needs a server restart.
+- Streamable HTTP at `/mcp` via `MCPServer.streamable_http_app`, **stateless** and JSON responses (no sessions to lose on restart), guarded by `Authorization: Bearer <key>`. `GET /health` is unauthenticated.
+- `src/my_garmin_mcp/tools/` - one file per tool, each exposing `register(server)`, wired up in `tools/__init__.py`.
+- `src/my_garmin_mcp/auth/` - the single access key from `MCP_ACCESS_KEY` (compared as SHA-256 digests in constant time), the pure-ASGI bearer middleware, and the `rotate-key` script.
+- `app.py` builds the ASGI app, `server.py` the `MCPServer`, `config.py` reads `.env`.
 - No database; runtime state (e.g. Garmin tokens) lives in `data/` (gitignored).
 
 ## Connecting Claude Code to the local server
@@ -34,7 +36,7 @@ Production runs under PM2 as `my-garmin-mcp` (assumed name, same as the project)
 
 ## Purpose
 
-A personal MCP (Model Context Protocol) server, written in Node.js + TypeScript, that lets the Claude mobile app talk to the owner's Garmin account. It fetches health data from Garmin and serves it back to Claude through MCP tools.
+A personal MCP (Model Context Protocol) server, written in Python, that lets the Claude mobile app talk to the owner's Garmin account. It fetches health data from Garmin and serves it back to Claude through MCP tools.
 
 ## Migration from legacy projects
 

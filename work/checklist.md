@@ -2,11 +2,11 @@
 
 Goal: Claude (including the mobile app) can read the same Garmin data it could through the two legacy projects (`my-garmin-api` + `adam_mcp`), served by this project alone. Details of what existed are in [docs/legacy/](../docs/legacy/).
 
-Done so far: server scaffold, `ping` tool, access key, `.env`, dev loop (see [AGENTS.md](../AGENTS.md)).
+Done so far: Python (uv) server scaffold, `ping` tool, access key, `.env`, dev loop (see [AGENTS.md](../AGENTS.md)).
 
 ## 1. Garmin login
 
-- [ ] Decide how to talk to Garmin Connect from Node: an npm library (e.g. `garmin-connect`; must support Garmin's current login), or reimplement the login. Spike first: can we log in with the `.env` credentials?
+- [ ] Use `garminconnect` (cyberjunky; decided over the Node `garmin-connect`). Spike first: can we log in with the `.env` credentials?
 - [ ] One shared client, created once and reused (the legacy API logged in on every request)
 - [ ] Persist session tokens in `GARMIN_TOKEN_STORE` and refresh them; fall back to a credential login only when needed
 - [ ] Errors are thrown and returned as tool errors, never crash the process (the legacy code exited on HTTP 429)
@@ -34,7 +34,7 @@ All date-range tools take `start_date` and `end_date` (YYYY-MM-DD, inclusive, en
 
 ## 4. Reachable from the phone (deploy to vps2)
 
-- [ ] Get the code and a production `.env` onto vps2 (own access key, Garmin credentials); build with `npm run build`
+- [ ] Get the code and a production `.env` onto vps2 (own access key, Garmin credentials); install with `uv sync --no-dev`; PM2 starts `uv run python -m my_garmin_mcp`
 - [ ] Run under PM2 as `my-garmin-mcp` (add an ecosystem file) and make it survive reboots (`pm2 startup` + `pm2 save`)
 - [ ] Pick a hostname and add a DNS record pointing it at vps2 (the name itself is kept out of the repo; it lives in the NGINX config on the server)
 - [ ] NGINX: a server block for that hostname that proxies HTTPS to the app on `127.0.0.1:3334`

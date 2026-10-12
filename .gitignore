@@ -1,11 +1,3 @@
-# Dependencies
-node_modules/
-
-# Build output
-dist/
-build/
-*.tsbuildinfo
-
 # Environment and secrets
 .env
 .env.*
@@ -14,18 +6,12 @@ build/
 # Logs
 logs/
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
 
 # Test coverage
 coverage/
 .nyc_output/
 
 # Caches
-.npm/
-.eslintcache
 .cache/
 
 # Editor / OS
@@ -37,3 +23,10 @@ Thumbs.db
 # Local runtime state
 data/
 .run/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
