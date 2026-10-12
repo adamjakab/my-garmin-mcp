@@ -2,7 +2,8 @@
 name = "my-garmin-mcp"
 version = "0.3.0"
 description = "Personal MCP server exposing Garmin data to Claude"
-readme = "AGENTS.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
     "mcp~=2.3",
