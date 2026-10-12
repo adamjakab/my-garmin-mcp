@@ -24,7 +24,7 @@ Production runs under PM2 as `my-garmin-mcp` (assumed name, same as the project)
 - `src/my_garmin_mcp/tools/` - one file per tool, each exposing `register(server)`, wired up in `tools/__init__.py`.
 - `src/my_garmin_mcp/auth/` - the single access key from `MCP_ACCESS_KEY` (compared as SHA-256 digests in constant time), the pure-ASGI bearer middleware, and the `rotate-key` script.
 - `app.py` builds the ASGI app, `server.py` the `MCPServer`, `config.py` reads `.env`.
-- `src/my_garmin_mcp/garmin/client.py` - `GarminClient`, the one shared Garmin session (tools call `await garmin.call(lambda g: g.get_...(...))`). It restores/refreshes the saved tokens and only uses the credentials when that fails, so a login never happens per request. After a failed login it pauses 15 minutes instead of retrying, to avoid Garmin blocking the IP. Raises `GarminError`.
+- `src/my_garmin_mcp/garmin/client.py` - `GarminClient`, the one shared Garmin session (tools call `await garmin.call(lambda g: g.get_...(...))`). It restores/refreshes the saved tokens and only uses the credentials when that fails, so a login never happens per request. After a failed login it pauses 15 minutes instead of retrying, to avoid Garmin blocking the IP. If the saved tokens are rejected 3 times in a row (`MAX_AUTH_FAILURES`) the token file is deleted so the next login is fresh (kept if no credentials are configured); this and login failures are logged at WARNING/ERROR to stderr (`.run/server.log` locally, the PM2 log in production). Raises `GarminError`.
 - No database; runtime state (e.g. Garmin tokens) lives in `data/` (gitignored).
 
 ## Connecting Claude Code to the local server

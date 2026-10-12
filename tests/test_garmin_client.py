@@ -94,3 +94,51 @@ async def test_api_errors_become_garmin_errors():
 async def test_no_credentials_and_no_tokens():
     with pytest.raises(GarminError, match="No Garmin tokens"):
         await make(email=None, password=None).call(lambda g: g.data())
+
+
+def _token_store(tmp_path):
+    (tmp_path / "garmin_tokens.json").write_text("{}")
+    return tmp_path
+
+
+def _always_rejected(g):
+    raise GarminConnectAuthenticationError("expired")
+
+
+async def test_tokens_are_deleted_after_repeated_rejections(tmp_path, caplog):
+    store = _token_store(tmp_path)
+    client = GarminClient("a@b.c", "pw", store, factory=FakeGarmin, clock=Clock())
+    with caplog.at_level("WARNING"), pytest.raises(GarminError):
+        await client.call(_always_rejected)  # two rejections: tokens stay
+    assert (store / "garmin_tokens.json").exists()
+    with pytest.raises(GarminError):
+        await client.call(_always_rejected)  # third rejection: tokens go
+    assert not (store / "garmin_tokens.json").exists()
+    assert "deleted" in caplog.text and "garmin_tokens.json" in caplog.text
+
+
+async def test_success_resets_the_failure_count(tmp_path):
+    store = _token_store(tmp_path)
+    client = GarminClient("a@b.c", "pw", store, factory=FakeGarmin, clock=Clock())
+    state = {"n": 0}
+
+    def reject_once_then_work(g):
+        state["n"] += 1
+        if state["n"] % 2 == 1:
+            raise GarminConnectAuthenticationError("expired")
+        return "ok"
+
+    for _ in range(5):  # each call is rejected once, then succeeds: never 3 in a row
+        assert await client.call(reject_once_then_work) == "ok"
+    assert (store / "garmin_tokens.json").exists()
+
+
+async def test_tokens_are_kept_without_credentials(tmp_path, caplog):
+    store = _token_store(tmp_path)
+    client = GarminClient(None, None, store, factory=FakeGarmin, clock=Clock())
+    with caplog.at_level("ERROR"):
+        for _ in range(2):
+            with pytest.raises(GarminError):
+                await client.call(_always_rejected)
+    assert (store / "garmin_tokens.json").exists()
+    assert "no credentials are configured" in caplog.text

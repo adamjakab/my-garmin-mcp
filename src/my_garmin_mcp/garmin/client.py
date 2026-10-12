@@ -20,6 +20,10 @@ T = TypeVar("T")
 # what makes Garmin block the account, so a failure must never turn into a retry storm.
 LOGIN_COOLDOWN_SECONDS = 15 * 60
 
+# After this many rejected calls in a row (no success in between) the saved tokens are considered dead:
+# the token file is deleted so the next login starts fresh from the credentials.
+MAX_AUTH_FAILURES = 3
+
 
 class GarminError(Exception):
     """A Garmin failure with a message that is safe to show to Claude (never contains credentials)."""
@@ -53,6 +57,7 @@ class GarminClient:
         self._lock = threading.Lock()
         self._blocked_until = 0.0
         self._last_failure = ""
+        self._auth_failures = 0
         self.login_count = 0
 
     def _login(self) -> Garmin:
@@ -83,23 +88,58 @@ class GarminClient:
             if self._api is failed:
                 self._api = None
 
+    def _record_auth_failure(self) -> None:
+        """Count a rejected call; at MAX_AUTH_FAILURES in a row, delete the saved tokens so the next login is fresh."""
+        with self._lock:
+            self._auth_failures += 1
+            failures = self._auth_failures
+            if failures < MAX_AUTH_FAILURES:
+                log.warning("Garmin rejected the session (%d/%d in a row)", failures, MAX_AUTH_FAILURES)
+                return
+            self._auth_failures = 0
+            token_file = self._token_store / "garmin_tokens.json"
+            if not (self._email and self._password):
+                log.error(
+                    "Garmin rejected the session %d times in a row, but no credentials are configured: keeping %s",
+                    failures,
+                    token_file,
+                )
+                return
+            try:
+                token_file.unlink(missing_ok=True)
+            except OSError as e:
+                log.error("Could not delete the rejected token file %s: %s", token_file, e)
+                return
+            log.warning(
+                "Garmin rejected the session %d times in a row: deleted %s, the next request logs in again",
+                failures,
+                token_file,
+            )
+
     def _call_sync(self, fn: Callable[[Garmin], T]) -> T:
         api = self._login()
         try:
-            return fn(api)
+            result = fn(api)
         except GarminConnectAuthenticationError:
             # The session was rejected: drop it and retry once. The login restores/refreshes the saved
             # tokens first and only falls back to the credentials if they are really dead.
+            self._record_auth_failure()
             self._drop_session(api)
             api = self._login()
             try:
-                return fn(api)
+                result = fn(api)
+            except GarminConnectAuthenticationError as e:
+                self._record_auth_failure()
+                raise GarminError(f"Garmin request failed: {_describe(e)}") from e
             except Exception as e:
                 raise GarminError(f"Garmin request failed: {_describe(e)}") from e
         except GarminError:
             raise
         except Exception as e:
             raise GarminError(f"Garmin request failed: {_describe(e)}") from e
+        with self._lock:
+            self._auth_failures = 0
+        return result
 
     async def call(self, fn: Callable[[Garmin], T]) -> T:
         """Run `fn(api)` against the shared session in a worker thread, e.g. `call(lambda g: g.get_sleep_data(day))`."""
