@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Scaffolded: a minimal MCP server (Python >= 3.12, managed with `uv`, official `mcp` SDK v2 `MCPServer`, Starlette/uvicorn) with one `ping` tool and API-key auth. Garmin integration is not started yet; it will use the `garminconnect` library (cyberjunky). The project was first scaffolded in Node/TypeScript and switched to Python because the best Garmin library is Python.
+Live. A Python MCP server (Python >= 3.12, managed with `uv`, official `mcp` SDK v2 `MCPServer`, Starlette/uvicorn) with API-key auth and eight tools: `ping` and seven Garmin tools (sleep, HRV, resting heart rate, VO2 max, weight, activities, one activity with extras), backed by the `garminconnect` library (cyberjunky). It runs on vps2 under PM2 behind NGINX and is used as a custom connector from Claude Code and the Claude mobile app. Ideas for later are in [work/future-improvements.md](work/future-improvements.md); the history of how it got here is in [work/checklist.md](work/checklist.md). The project was first scaffolded in Node/TypeScript and switched to Python because the best Garmin library is Python.
 
 ## Commands
 
@@ -41,6 +41,6 @@ Deploy and update steps: [docs/deploy.md](docs/deploy.md) (with the NGINX and PM
 
 A personal MCP (Model Context Protocol) server, written in Python, that lets the Claude mobile app talk to the owner's Garmin account. It fetches health data from Garmin and serves it back to Claude through MCP tools.
 
-## Migration from legacy projects
+## Legacy projects
 
-The scaffold is meant to reuse code and knowledge from two existing sibling projects (to be identified by the user; likely candidates under `/home/jackisback/WslCode/garmin/` include `my-garmin-api`). Once this project is up and running, those two projects will be deleted, so anything worth keeping must be ported here rather than referenced in place. Do not add imports or paths pointing at the sibling projects.
+This server replaced `my-garmin-api` (a Python REST wrapper around Garmin Connect, now deleted; everything worth keeping was ported). `adam_mcp`, the older personal MCP server whose Garmin tools were generated from that API, is a separate project that is stopped but kept, because it may be revived; [docs/legacy/adam_mcp.md](docs/legacy/adam_mcp.md) documents it. Do not add imports or paths pointing at sibling projects: port what you need instead.

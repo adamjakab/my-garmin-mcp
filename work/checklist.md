@@ -1,6 +1,6 @@
 # Checklist: reach parity with the legacy setup
 
-Goal: Claude (including the mobile app) can read the same Garmin data it could through the two legacy projects (`my-garmin-api` + `adam_mcp`), served by this project alone. Details of what existed are in [docs/legacy/](../docs/legacy/).
+Goal: Claude (including the mobile app) can read the same Garmin data it could through the two legacy projects (`my-garmin-api` + `adam_mcp`), served by this project alone. `my-garmin-api` is gone (ported and deleted); what `adam_mcp` did is in [docs/legacy/adam_mcp.md](../docs/legacy/adam_mcp.md).
 
 Done so far: Python (uv) server scaffold, `ping` tool, access key, `.env`, dev loop (see [AGENTS.md](../AGENTS.md)).
 
@@ -50,8 +50,8 @@ All date-range tools take `start_date` and `end_date` (YYYY-MM-DD, inclusive, en
 ## 5. Wrap-up
 
 - [x] Anything still worth keeping from the legacy projects is ported here (the open leftovers are in future-improvements.md; adam_mcp is kept)
-- [ ] Delete the legacy `my-garmin-api` project. `adam_mcp` is kept for now (stopped on vps2, NGINX symlink removed; its mailbox and memory tools may be revived later): its CNAME, certificate and PM2 block stay until decided
-- [ ] Remove `docs/legacy/` and update the migration section in `AGENTS.md`
+- [x] Delete the legacy `my-garmin-api` project (2026-10-12: systemd service, NGINX block, certificate, DNS record and files on vps2, plus the local copy). `adam_mcp` is kept (stopped on vps2, NGINX symlink removed; its mailbox and memory tools may be revived later): its CNAME, certificate and PM2 block stay until decided
+- [x] Remove the `my-garmin-api` doc from `docs/legacy/` and update the migration section in `AGENTS.md` (`docs/legacy/adam_mcp.md` stays while adam_mcp is kept)
 - [ ] Before going public: review history and files for secrets and local paths
 
 ## Later
