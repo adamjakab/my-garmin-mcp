@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
@@ -21,6 +23,8 @@ def register(server: MCPServer, garmin: GarminClient) -> None:
     )
     async def get_vo2max(start_date: StartDate, end_date: EndDate) -> str:
         start, end = parse_range(start_date, end_date, MAX_DAYS_SINGLE_REQUEST)
-        payload = await garmin.call(lambda g: g.get_max_metrics_range(start.isoformat(), end.isoformat()))
+        raw = await garmin.call(lambda g: g.get_max_metrics_range(start.isoformat(), end.isoformat()))
+        # garminconnect annotates this as a dict, but Garmin returns a list of per-day records.
+        payload = cast(list[dict[str, Any]] | None, raw)
         entries = [e for e in vo2max_entries(payload) if start.isoformat() <= e["date"] <= end.isoformat()]
         return as_json({"start_date": start_date, "end_date": end_date, "count": len(entries), "vo2max": entries})

@@ -51,7 +51,7 @@ def register(server: MCPServer, garmin: GarminClient) -> None:
     )
     async def get_activity(
         activity_id: Annotated[int, Field(gt=0, description="Garmin activity id")],
-        include: Annotated[list[Extra], Field(description="Extra data to add; default none")] = (),
+        include: Annotated[list[Extra] | None, Field(description="Extra data to add; default none")] = None,
         bucket_seconds: Annotated[
             int,
             Field(ge=10, le=3600, description="Bucket size for `details`; raise it (e.g. 300) for a smaller answer"),
@@ -72,7 +72,7 @@ def register(server: MCPServer, garmin: GarminClient) -> None:
                 return
             result[name] = bucket_details(data, bucket_seconds) if name == "details" else data
 
-        await asyncio.gather(*(fetch(n) for n in dict.fromkeys(include)))
+        await asyncio.gather(*(fetch(n) for n in dict.fromkeys(include or [])))
         if errors:
             result["errors"] = errors
         return as_json(result)
