@@ -1,6 +1,6 @@
 # Workspace boundaries
 
-Write access is limited to this project folder, `my-garmin-mcp/`. Sibling projects (for example `../../adibacsi/dev-dashboard`) are read-only references.
+Write access is limited to this project folder, `my-garmin-mcp/`. Sibling projects (any folder next to this one) are read-only references.
 
 ## Rules
 
