@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Background dev server control: scripts/server.sh start|stop|restart|status|logs
+# Background dev server control: .claude/skills/local-dev-env/scripts/server.sh start|stop|restart|status|logs
 # No file watching: restart = pick up code changes.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../../../.."  # repo root (script lives in .claude/skills/local-dev-env/scripts/)
 
 RUN_DIR=".run"
 PID_FILE="$RUN_DIR/server.pid"

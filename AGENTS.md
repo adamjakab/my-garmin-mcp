@@ -14,13 +14,13 @@ Index: the Documentation section of [README.md](README.md). Rules: [docs/convent
 
 - `uv sync` - install dependencies into `.venv`
 - `uv run python -m my_garmin_mcp` - foreground server
-- `scripts/server.sh start|stop|restart|status|logs` - background server (pid/log in `.run/`); restart after code changes so the tool list refreshes
+- `.claude/skills/local-dev-env/scripts/server.sh start|stop|restart|status|logs` - background server (pid/log in `.run/`); restart after code changes so the tool list refreshes
 - `uv run rotate-key` - asks for confirmation (warns that clients using the old key break), then writes a new `MCP_ACCESS_KEY` into `.env` and prints it. Restart afterwards (`pm2 restart my-garmin-mcp` in production). `--yes` skips the prompt
 - `uv run pytest` (includes an end-to-end MCP client test), `uv run ruff check .`, `uv run ruff format .`
 
 Config via `.env` (copy `.env.example`; gitignored): `PORT`, `HOST`, `ALLOWED_HOSTS` (public hostname(s) behind a reverse proxy; loopback is always allowed), `DATA_DIR`, `GARMIN_EMAIL`, `GARMIN_PASSWORD`, `GARMIN_TOKEN_STORE`, `MCP_ACCESS_KEY` (the single access key). Real env vars override the file.
 
-Deploy and update steps: [docs/deployment/deploy.md](docs/deployment/deploy.md) (with the NGINX and PM2 config as appendices); `deploy/update.sh` on vps2 tests `origin/main` in a throwaway worktree and, only if green, restarts the pm2 app. Production runs under PM2 as `my-garmin-mcp` (assumed name, same as the project). After changing `.env` or deploying, restart it with `pm2 restart my-garmin-mcp`. `scripts/server.sh` is for local development only.
+Deploy and update steps: [docs/deployment/deploy.md](docs/deployment/deploy.md) (with the NGINX and PM2 config as appendices); `deploy/update.sh` on vps2 tests `origin/main` in a throwaway worktree and, only if green, restarts the pm2 app. Production runs under PM2 as `my-garmin-mcp` (assumed name, same as the project). After changing `.env` or deploying, restart it with `pm2 restart my-garmin-mcp`. `.claude/skills/local-dev-env/scripts/server.sh` is for local development only.
 
 ## Architecture
 
