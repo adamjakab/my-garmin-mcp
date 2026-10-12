@@ -33,3 +33,7 @@ coverage/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local runtime state
+data/
+.run/
