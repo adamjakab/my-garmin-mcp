@@ -1,6 +1,7 @@
 import socket
 import threading
 import time
+from pathlib import Path
 
 import httpx
 import pytest
@@ -10,6 +11,7 @@ from mcp.client.streamable_http import streamable_http_client
 
 from my_garmin_mcp.app import create_app
 from my_garmin_mcp.auth.keys import access_key_verifier, generate_key
+from my_garmin_mcp.garmin import GarminClient
 
 KEY = generate_key()
 
@@ -20,7 +22,12 @@ def url():
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
     server = uvicorn.Server(
-        uvicorn.Config(create_app(access_key_verifier(KEY)), host="127.0.0.1", port=port, log_level="warning")
+        uvicorn.Config(
+            create_app(access_key_verifier(KEY), GarminClient(None, None, Path("unused"))),
+            host="127.0.0.1",
+            port=port,
+            log_level="warning",
+        )
     )
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()

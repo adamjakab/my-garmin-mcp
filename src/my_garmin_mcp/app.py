@@ -5,12 +5,13 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from .auth.middleware import BearerAuthMiddleware
+from .garmin import GarminClient
 from .server import create_mcp_server
 
 
-def create_app(verify_key: Callable[[str], bool]) -> Starlette:
+def create_app(verify_key: Callable[[str], bool], garmin: GarminClient) -> Starlette:
     """Streamable HTTP at /mcp, stateless (no sessions to lose on restart), behind a bearer key. /health is open."""
-    server = create_mcp_server()
+    server = create_mcp_server(garmin)
 
     @server.custom_route("/health", methods=["GET"])
     async def health(_request: Request) -> JSONResponse:
