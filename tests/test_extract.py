@@ -5,6 +5,7 @@ from my_garmin_mcp.garmin.extract import (
     activity_list_item,
     bucket_details,
     flatten_activity,
+    heart_rate_day,
     hrv_summary,
     resting_hr,
     sleep_summary,
@@ -132,3 +133,60 @@ def test_bucket_details_groups_by_minute():
     assert out["columns"] == ["seconds_since_start", "min", "max", "avg", "count"]
     assert out["metrics"] == {"directHeartRate": [[0, 100, 110, 105.0, 2], [60, 120, 120, 120.0, 1]]}
     assert "geoPolylineDTO" not in out
+
+
+HOUR = 3_600_000
+# 2026-10-01 22:00 GMT; local is +2h, so the day starts at local midnight
+GMT_START = 1_790_892_000_000
+
+
+def _hr_payload(values, **extra):
+    return {
+        "calendarDate": "2026-10-02",
+        "startTimestampGMT": GMT_START,
+        "startTimestampLocal": GMT_START + 2 * HOUR,
+        "heartRateValues": values,
+        **extra,
+    }
+
+
+def test_heart_rate_day_buckets_in_local_time():
+    values = [
+        [GMT_START, 50],
+        [GMT_START + 10 * 60_000, 60],
+        [GMT_START + 40 * 60_000, 70],
+        [GMT_START + 2 * HOUR, None],
+    ]
+    out = heart_rate_day("2026-10-02", _hr_payload(values, restingHeartRate=48, minHeartRate=45, maxHeartRate=120))
+    assert out["columns"] == ["time", "min", "max", "avg"]
+    assert out["readings"] == [["00:00", 50, 60, 55], ["00:30", 70, 70, 70]]
+    assert (out["resting_hr"], out["min_hr"], out["max_hr"], out["avg_hr"]) == (48, 45, 120, 60.0)
+    assert out["date"] == "2026-10-02"
+
+
+def test_heart_rate_day_offset_crosses_the_gmt_day_boundary():
+    out = heart_rate_day("2026-10-02", _hr_payload([[GMT_START + 90 * 60_000, 80]]))
+    assert out["readings"] == [["01:30", 80, 80, 80]]
+
+
+def test_heart_rate_day_without_timestamps_uses_offset_zero():
+    payload = {"heartRateValues": [[GMT_START, 55]]}
+    assert heart_rate_day("2026-10-02", payload)["readings"] == [["22:00", 55, 55, 55]]
+
+
+def test_heart_rate_day_falls_back_to_reading_min_max_and_uses_day():
+    out = heart_rate_day("2026-10-02", {"heartRateValues": [[GMT_START, 50], [GMT_START + 60_000, 70]]})
+    assert (out["min_hr"], out["max_hr"], out["date"]) == (50, 70, "2026-10-02")
+    assert "resting_hr" not in out
+
+
+def test_heart_rate_day_bucket_minutes():
+    values = [[GMT_START + i * 20 * 60_000, 60 + i] for i in range(6)]
+    out = heart_rate_day("2026-10-02", _hr_payload(values), bucket_minutes=60)
+    assert [r[0] for r in out["readings"]] == ["00:00", "01:00"]
+    assert out["bucket_minutes"] == 60
+
+
+@pytest.mark.parametrize("payload", [None, {}, {"heartRateValues": []}, {"heartRateValues": [[GMT_START, None]]}])
+def test_heart_rate_day_none_without_readings(payload):
+    assert heart_rate_day("2026-10-02", payload) is None

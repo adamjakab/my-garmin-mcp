@@ -27,6 +27,16 @@ class FakeApi:
             return {"dailySleepDTO": {}}
         return {"dailySleepDTO": {"sleepTimeSeconds": 25000, "sleepScores": {"overall": {"value": 80}}}}
 
+    def get_heart_rates(self, day):
+        self.calls.append(f"hr {day}")
+        if day.endswith("-02"):
+            return {"heartRateValues": []}
+        return {
+            "calendarDate": day,
+            "restingHeartRate": 50,
+            "heartRateValues": [[0, 60], [60_000, 80], [120_000, None]],
+        }
+
     def get_activities_by_date(self, start, end):
         return [{"activityId": 7, "activityName": "Run", "activityType": {"typeKey": "running"}, "distance": 1000.0}]
 
@@ -120,3 +130,22 @@ async def test_host_header_is_checked_unless_allowed():
         statuses.append(res.text)
     assert "Invalid Host header" in statuses[0]
     assert "Invalid Host header" not in statuses[1]
+
+
+async def test_get_heart_rate_buckets_readings_and_skips_empty_days():
+    async with session() as client:
+        data = _data(await client.call_tool("get_heart_rate", {"start_date": "2026-10-01", "end_date": "2026-10-03"}))
+        assert data["count"] == 2
+        assert [d["date"] for d in data["heart_rate"]] == ["2026-10-01", "2026-10-03"]
+        assert data["heart_rate"][0]["readings"] == [["00:00", 60, 80, 70]]
+        assert data["heart_rate"][0]["resting_hr"] == 50
+
+
+async def test_get_heart_rate_rejects_bad_bucket_and_long_range():
+    async with session() as client:
+        day = {"start_date": "2026-10-01", "end_date": "2026-10-01"}
+        assert (await client.call_tool("get_heart_rate", {**day, "bucket_minutes": 1})).is_error
+        assert (await client.call_tool("get_heart_rate", {**day, "bucket_minutes": 121})).is_error
+        assert (
+            await client.call_tool("get_heart_rate", {"start_date": "2026-10-01", "end_date": "2026-10-04"})
+        ).is_error
