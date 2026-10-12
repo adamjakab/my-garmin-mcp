@@ -34,6 +34,7 @@ Deploy and update steps: [docs/deploy.md](docs/deploy.md) (with the NGINX and PM
 
 ## Conventions
 
+- Version bumps: change `version` in `pyproject.toml` **and** `__version__` in `src/my_garmin_mcp/__init__.py` (a test fails if they differ), then run `uv lock` so `uv.lock` follows (the deploy installs with `--locked`). `ping` reports the version, which is how to confirm what is deployed.
 - [Workspace boundaries](docs/conventions/workspace-boundaries.md) - read sibling projects freely, write only inside `my-garmin-mcp/`.
 
 ## Purpose

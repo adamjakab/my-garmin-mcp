@@ -9,6 +9,7 @@ import uvicorn
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
 
+from my_garmin_mcp import __version__
 from my_garmin_mcp.app import create_app
 from my_garmin_mcp.auth.keys import access_key_verifier, generate_key
 from my_garmin_mcp.garmin import GarminClient
@@ -71,4 +72,4 @@ async def test_ping_with_valid_key(url):
             ]
         )
         result = await client.call_tool("ping")
-        assert "pong" in result.content[0].text
+        assert result.content[0].text.startswith(f"pong v{__version__} ")
