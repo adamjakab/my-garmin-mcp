@@ -1,5 +1,7 @@
 # Workspace boundaries
 
+> Last updated: 2026-10-12
+
 Write access is limited to this project folder, `my-garmin-mcp/`. Sibling projects (any folder next to this one) are read-only references.
 
 ## Rules

@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Live. A Python MCP server (Python >= 3.12, managed with `uv`, official `mcp` SDK v2 `MCPServer`, Starlette/uvicorn) with API-key auth and eight tools: `ping` and seven Garmin tools (sleep, HRV, resting heart rate, VO2 max, weight, activities, one activity with extras), backed by the `garminconnect` library (cyberjunky). It runs on vps2 under PM2 behind NGINX and is used as a custom connector from Claude Code and the Claude mobile app. Ideas for later are in [work/future-improvements.md](work/future-improvements.md).
 
+## Documentation
+
+Index: the Documentation section of [README.md](README.md). Rules: [docs/conventions/documentation.md](docs/conventions/documentation.md).
+
 ## Commands
 
 - `uv sync` - install dependencies into `.venv`
@@ -16,7 +20,7 @@ Live. A Python MCP server (Python >= 3.12, managed with `uv`, official `mcp` SDK
 
 Config via `.env` (copy `.env.example`; gitignored): `PORT`, `HOST`, `ALLOWED_HOSTS` (public hostname(s) behind a reverse proxy; loopback is always allowed), `DATA_DIR`, `GARMIN_EMAIL`, `GARMIN_PASSWORD`, `GARMIN_TOKEN_STORE`, `MCP_ACCESS_KEY` (the single access key). Real env vars override the file.
 
-Deploy and update steps: [docs/deploy.md](docs/deploy.md) (with the NGINX and PM2 config as appendices); `deploy/update.sh` on vps2 tests `origin/main` in a throwaway worktree and, only if green, restarts the pm2 app. Production runs under PM2 as `my-garmin-mcp` (assumed name, same as the project). After changing `.env` or deploying, restart it with `pm2 restart my-garmin-mcp`. `scripts/server.sh` is for local development only.
+Deploy and update steps: [docs/deployment/deploy.md](docs/deployment/deploy.md) (with the NGINX and PM2 config as appendices); `deploy/update.sh` on vps2 tests `origin/main` in a throwaway worktree and, only if green, restarts the pm2 app. Production runs under PM2 as `my-garmin-mcp` (assumed name, same as the project). After changing `.env` or deploying, restart it with `pm2 restart my-garmin-mcp`. `scripts/server.sh` is for local development only.
 
 ## Architecture
 

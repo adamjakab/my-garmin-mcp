@@ -1,5 +1,7 @@
 # Deploy and update (vps2, PM2 + NGINX)
 
+> Last updated: 2026-10-12
+
 The app runs as `my-garmin-mcp` under PM2 behind NGINX with TLS, reachable by Claude (including the phone) as a custom connector. Config templates are in the appendix at the end. The real hostname is not kept in the repo; below it is `mcp.example.com`.
 
 ## First deploy
@@ -25,7 +27,7 @@ Push to `origin/main`, then on the server, from the live checkout:
 ~/app/my-garmin-mcp/deploy/update.sh
 ```
 
-[deploy/update.sh](../deploy/update.sh) refuses to run anywhere but production, then:
+[deploy/update.sh](../../deploy/update.sh) refuses to run anywhere but production, then:
 
 1. Preflight: pm2 runs the app from this checkout and it is online, the checkout is on `main` and clean, `.env` exists, and the commit on `origin/main` is a fast-forward of the live one.
 2. Tests: the new commit is checked out into a throwaway git worktree (`~/app/my-garmin-mcp-build/`) with its own virtualenv and the full test suite runs there. If anything is red, the script stops and the live service, checkout and virtualenv are untouched.
