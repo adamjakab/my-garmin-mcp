@@ -71,6 +71,8 @@ main() {
 			git -C "${LIVE}" worktree remove --force "${BUILD}" >/dev/null 2>&1 || rm -rf "${BUILD}"
 			git -C "${LIVE}" worktree prune >/dev/null 2>&1 || true
 		fi
+		# Only an empty folder goes (rmdir refuses otherwise), so a build that is still running is never touched.
+		rmdir "${BUILD_ROOT}" 2>/dev/null || true
 		exit "${code}"
 	}
 	trap cleanup EXIT
