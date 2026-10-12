@@ -35,17 +35,17 @@ All date-range tools take `start_date` and `end_date` (YYYY-MM-DD, inclusive, en
 
 ## 4. Reachable from the phone (deploy to vps2)
 
-- [ ] Set `ALLOWED_HOSTS` in the production `.env` to the public hostname (the SDK rejects unknown Host headers)
-- [ ] Get the code and a production `.env` onto vps2 (own access key, Garmin credentials); install with `uv sync --no-dev`; PM2 starts `uv run python -m my_garmin_mcp`
-- [ ] Run under PM2 as `my-garmin-mcp` (add an ecosystem file) and make it survive reboots (`pm2 startup` + `pm2 save`)
-- [ ] Pick a hostname and add a DNS record pointing it at vps2 (the name itself is kept out of the repo; it lives in the NGINX config on the server)
-- [ ] NGINX: a server block for that hostname that proxies HTTPS to the app on `127.0.0.1:3334`
-  - [ ] TLS certificate (e.g. Let's Encrypt via certbot) and an HTTP-to-HTTPS redirect
-  - [ ] Location exactly `/mcp` (no trailing slash), proxy buffering off, sensible timeouts
-  - [ ] Its own rate limit, and no logging of the `Authorization` header
+- [x] Set `ALLOWED_HOSTS` in the production `.env` to the public hostname (the SDK rejects unknown Host headers)
+- [x] Get the code and a production `.env` onto vps2 (own access key, Garmin credentials); install with `uv sync --no-dev`; PM2 starts `uv run python -m my_garmin_mcp`
+- [x] Run under PM2 as `my-garmin-mcp` (add an ecosystem file) and make it survive reboots (`pm2 startup` + `pm2 save`)
+- [x] Pick a hostname and add a DNS record pointing it at vps2 (the name itself is kept out of the repo; it lives in the NGINX config on the server)
+- [x] NGINX: a server block for that hostname that proxies HTTPS to the app on `127.0.0.1:3336` (3334 belongs to adam-mcp on vps2)
+  - [x] TLS certificate (e.g. Let's Encrypt via certbot) and an HTTP-to-HTTPS redirect
+  - [x] Location exactly `/mcp` (no trailing slash), proxy buffering off, sensible timeouts
+  - [x] Its own rate limit, and no logging of the `Authorization` header
 - [ ] Add it as a custom connector in Claude with the `Authorization: Bearer <key>` request header
 - [ ] Ask for each tool's data from the phone and compare with the legacy answers
-- [ ] Write the deploy and update steps down (a short doc under `docs/`) so redeploys are repeatable
+- [x] Write the deploy and update steps down (a short doc under `docs/`) so redeploys are repeatable
 
 ## 5. Wrap-up
 
