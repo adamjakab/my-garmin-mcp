@@ -31,6 +31,10 @@ class FakeApi:
         return [{"activityId": 7, "activityName": "Run", "activityType": {"typeKey": "running"}, "distance": 1000.0}]
 
     def get_activity(self, activity_id):
+        if activity_id == "404":
+            from garminconnect import GarminConnectNotFoundError
+
+            raise GarminConnectNotFoundError("API Error 404")
         return {
             "activityId": int(activity_id),
             "activityTypeDTO": {"typeKey": "running"},
@@ -90,6 +94,12 @@ async def test_get_activity_reports_failed_extras_without_failing():
         assert data["activityId"] == 7 and data["distance"] == 1000.0 and data["activityType"] == {"typeKey": "running"}
         assert data["weather"] == {"temp": 20}
         assert "splits" not in data and "boom" in data["errors"]["splits"]
+
+
+async def test_get_activity_with_unknown_id_says_so():
+    async with session() as client:
+        result = await client.call_tool("get_activity", {"activity_id": 404})
+        assert result.is_error and "No activity with id 404" in result.content[0].text
 
 
 async def test_host_header_is_checked_unless_allowed():

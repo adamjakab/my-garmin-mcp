@@ -17,7 +17,6 @@ Not exposed yet; `garminconnect` has getters for all of them.
 - **MFA:** nothing handles it yet. The library only saves tokens when `return_on_mfa` is off (it returns early otherwise), so a one-time CLI login that writes the token file is the likely route if the account ever asks for a code.
 - **Paths never exercised for real:** the token deletion after 3 rejections (tested with fakes only), the token refresh close to expiry, and `deploy/update.sh` with a red test run or a failed health check (rollback). Only the green path ran on vps2.
 - **Body composition:** only `weight_kg` has been seen, because the scale or app logs weight only. The other fields (`body_fat_pct`, `muscle_mass_kg`, ...) assume Garmin reports grams and are untested with real data.
-- **Missing activity id:** the error reads "connection problem (... 404 ...)". It could say plainly that the activity does not exist.
 - **Tool output** arrives wrapped as `{"result": "<escaped JSON>"}` because tools return compact JSON text. Returning structured content would avoid the escaping but pretty-prints long number lists; measure before changing.
 - Per-day tools make one Garmin request per day (3 at a time, max 31 days). If Garmin rate limits become a problem, add a small cache.
 

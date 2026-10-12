@@ -10,6 +10,7 @@ from garminconnect import (
     Garmin,
     GarminConnectAuthenticationError,
     GarminConnectConnectionError,
+    GarminConnectNotFoundError,
     GarminConnectTooManyRequestsError,
 )
 from mcp.server.mcpserver.exceptions import ToolError
@@ -31,6 +32,10 @@ class GarminError(ToolError):
 
     A ToolError, so the MCP server returns the message as a tool error instead of hiding it as a crash.
     """
+
+
+class GarminNotFound(GarminError):
+    """Garmin answered 404: the requested resource (e.g. an activity id) does not exist."""
 
 
 class GarminClient:
@@ -136,11 +141,11 @@ class GarminClient:
                 self._record_auth_failure()
                 raise GarminError(f"Garmin request failed: {_describe(e)}") from e
             except Exception as e:
-                raise GarminError(f"Garmin request failed: {_describe(e)}") from e
+                raise _request_error(e) from e
         except GarminError:
             raise
         except Exception as e:
-            raise GarminError(f"Garmin request failed: {_describe(e)}") from e
+            raise _request_error(e) from e
         with self._lock:
             self._auth_failures = 0
         return result
@@ -148,6 +153,12 @@ class GarminClient:
     async def call(self, fn: Callable[[Garmin], T]) -> T:
         """Run `fn(api)` against the shared session in a worker thread, e.g. `call(lambda g: g.get_sleep_data(day))`."""
         return await asyncio.to_thread(self._call_sync, fn)
+
+
+def _request_error(e: Exception) -> GarminError:
+    if isinstance(e, GarminConnectNotFoundError):
+        return GarminNotFound("Garmin request failed: not found (HTTP 404)")
+    return GarminError(f"Garmin request failed: {_describe(e)}")
 
 
 def _describe(e: Exception) -> str:

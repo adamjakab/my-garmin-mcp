@@ -5,7 +5,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from ..garmin import GarminClient, GarminError
+from ..garmin import GarminClient, GarminError, GarminNotFound
 from ..garmin.dates import InvalidRequest
 from ..garmin.extract import bucket_details, flatten_activity
 from ._common import as_json
@@ -58,7 +58,10 @@ def register(server: MCPServer, garmin: GarminClient) -> None:
         ] = 60,
     ) -> str:
         aid = str(activity_id)
-        summary = await garmin.call(lambda g: g.get_activity(aid))
+        try:
+            summary = await garmin.call(lambda g: g.get_activity(aid))
+        except GarminNotFound:
+            summary = None
         if not summary:
             raise InvalidRequest(f"No activity with id {activity_id}")
         result = flatten_activity(summary)
