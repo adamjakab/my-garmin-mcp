@@ -5,6 +5,7 @@ Goal: Claude (including the mobile app) can read the same Garmin data it could t
 Done so far: server scaffold, `ping` tool, access key, `.env`, dev loop (see [AGENTS.md](../AGENTS.md)).
 
 ## 1. Garmin login
+
 - [ ] Decide how to talk to Garmin Connect from Node: an npm library (e.g. `garmin-connect`; must support Garmin's current login), or reimplement the login. Spike first: can we log in with the `.env` credentials?
 - [ ] One shared client, created once and reused (the legacy API logged in on every request)
 - [ ] Persist session tokens in `GARMIN_TOKEN_STORE` and refresh them; fall back to a credential login only when needed
@@ -12,7 +13,9 @@ Done so far: server scaffold, `ping` tool, access key, `.env`, dev loop (see [AG
 - [ ] Decide how to handle MFA, if the account ever asks for it (e.g. a one-time CLI login that writes the token file)
 
 ## 2. Tools (the legacy set)
+
 All date-range tools take `start_date` and `end_date` (YYYY-MM-DD, inclusive, end >= start).
+
 - [ ] `get_sleep`: score and duration per day (consider adding sleep stages)
 - [ ] `get_hrv`: per day, dropping the bulky raw readings
 - [ ] `get_resting_hr`
@@ -23,12 +26,14 @@ All date-range tools take `start_date` and `end_date` (YYYY-MM-DD, inclusive, en
 - [ ] Activity details reduced to 60-second buckets (min/max/avg/count) to keep responses small
 
 ## 3. Shared quality
+
 - [ ] Tool descriptions written for Claude, reusing the legacy wording where good
 - [ ] Output sizes kept manageable for the phone's context
 - [ ] Tests: pure logic (date ranges, sleep/VO2 extraction, bucketing) and each tool through the e2e client
 - [ ] Each tool tried for real through `Garmin-MCP-Local` against the actual account
 
 ## 4. Reachable from the phone (deploy to vps2)
+
 - [ ] Get the code and a production `.env` onto vps2 (own access key, Garmin credentials); build with `npm run build`
 - [ ] Run under PM2 as `my-garmin-mcp` (add an ecosystem file) and make it survive reboots (`pm2 startup` + `pm2 save`)
 - [ ] Pick a hostname and add a DNS record pointing it at vps2 (the name itself is kept out of the repo; it lives in the NGINX config on the server)
@@ -41,10 +46,12 @@ All date-range tools take `start_date` and `end_date` (YYYY-MM-DD, inclusive, en
 - [ ] Write the deploy and update steps down (a short doc under `docs/`) so redeploys are repeatable
 
 ## 5. Wrap-up
+
 - [ ] Anything still worth keeping from the legacy projects is ported here
 - [ ] Delete the two legacy projects
 - [ ] Remove `docs/legacy/` and update the migration section in `AGENTS.md`
 - [ ] Before going public: review history and files for secrets and local paths
 
 ## Later (not needed for parity)
+
 Data the legacy setup never offered: stress, body battery, steps, heart rate, training readiness and status, SpO2, workouts, devices.
