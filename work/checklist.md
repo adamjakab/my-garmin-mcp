@@ -6,7 +6,7 @@ Done so far: Python (uv) server scaffold, `ping` tool, access key, `.env`, dev l
 
 ## 1. Garmin login
 
-- [ ] Use `garminconnect` (cyberjunky; decided over the Node `garmin-connect`). Spike first: can we log in with the `.env` credentials?
+- [x] Use `garminconnect` (cyberjunky; decided over the Node `garmin-connect`). Spike done 2026-10-12: login with the `.env` credentials works (0.3.17, ~10 s, a few login strategies get a 429 before one succeeds), tokens are saved to `<GARMIN_TOKEN_STORE>/garmin_tokens.json` (the path is a directory) and the next login reuses them in ~0.5 s. `get_sleep_data` and `get_rhr_day` returned data. Tokens are only saved when `return_on_mfa` is off.
 - [ ] One shared client, created once and reused (the legacy API logged in on every request)
 - [ ] Persist session tokens in `GARMIN_TOKEN_STORE` and refresh them; fall back to a credential login only when needed
 - [ ] Errors are thrown and returned as tool errors, never crash the process (the legacy code exited on HTTP 429)

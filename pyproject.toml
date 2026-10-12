@@ -8,6 +8,7 @@ dependencies = [
     "mcp~=2.3",
     "uvicorn>=0.30",
     "python-dotenv>=1.0",
+    "garminconnect>=0.3.17",
 ]
 
 [project.scripts]
