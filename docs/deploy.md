@@ -19,11 +19,20 @@ The app runs as `my-garmin-mcp` under PM2 behind NGINX with TLS, reachable by Cl
 
 ## Update
 
+Push to `origin/main`, then on the server, from the live checkout:
+
 ```
-cd ~/app/my-garmin-mcp && git pull && uv sync --no-dev && pm2 restart my-garmin-mcp
+~/app/my-garmin-mcp/deploy/update.sh
 ```
 
-After changing `.env` only the restart is needed. Logs: `pm2 logs my-garmin-mcp` (login failures, rejected-token cleanup and Garmin pauses are logged there). Rotating the key: `uv run rotate-key`, restart, update the connector header.
+[deploy/update.sh](../deploy/update.sh) refuses to run anywhere but production, then:
+
+1. Preflight: pm2 runs the app from this checkout and it is online, the checkout is on `main` and clean, `.env` exists, and the commit on `origin/main` is a fast-forward of the live one.
+2. Tests: the new commit is checked out into a throwaway git worktree (`~/app/my-garmin-mcp-build/`) with its own virtualenv and the full test suite runs there. If anything is red, the script stops and the live service, checkout and virtualenv are untouched.
+3. Go live (seconds of downtime): `pm2 stop`, fast-forward the live checkout, `uv sync --no-dev --locked`, `pm2 start`, then wait for `/health`.
+4. If step 3 fails (install error, or no `/health` answer in 30 s) the checkout is reset to the previous commit, the install is redone and the app is started again.
+
+Redeploying the commit that is already live is allowed (it tests and restarts anyway). After changing `.env` only, `pm2 restart my-garmin-mcp` is enough. Logs: `pm2 logs my-garmin-mcp` (login failures, rejected-token cleanup and Garmin pauses are logged there). Rotating the key: `uv run rotate-key`, restart, update the connector header.
 
 ## Notes
 

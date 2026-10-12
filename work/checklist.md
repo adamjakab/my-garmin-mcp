@@ -50,7 +50,7 @@ All date-range tools take `start_date` and `end_date` (YYYY-MM-DD, inclusive, en
 ## 5. Wrap-up
 
 - [ ] Anything still worth keeping from the legacy projects is ported here
-- [ ] Delete the two legacy projects
+- [ ] Delete the legacy `my-garmin-api` project. `adam_mcp` is kept for now (stopped on vps2, NGINX symlink removed; its mailbox and memory tools may be revived later): its CNAME, certificate and PM2 block stay until decided
 - [ ] Remove `docs/legacy/` and update the migration section in `AGENTS.md`
 - [ ] Before going public: review history and files for secrets and local paths
 

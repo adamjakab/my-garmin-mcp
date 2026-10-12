@@ -16,7 +16,7 @@ Scaffolded: a minimal MCP server (Python >= 3.12, managed with `uv`, official `m
 
 Config via `.env` (copy `.env.example`; gitignored): `PORT`, `HOST`, `ALLOWED_HOSTS` (public hostname(s) behind a reverse proxy; loopback is always allowed), `DATA_DIR`, `GARMIN_EMAIL`, `GARMIN_PASSWORD`, `GARMIN_TOKEN_STORE`, `MCP_ACCESS_KEY` (the single access key). Real env vars override the file.
 
-Deploy and update steps: [docs/deploy.md](docs/deploy.md) (templates in `deploy/`). Production runs under PM2 as `my-garmin-mcp` (assumed name, same as the project). After changing `.env` or deploying, restart it with `pm2 restart my-garmin-mcp`. `scripts/server.sh` is for local development only.
+Deploy and update steps: [docs/deploy.md](docs/deploy.md) (templates in `deploy/`); `deploy/update.sh` on vps2 tests `origin/main` in a throwaway worktree and, only if green, restarts the pm2 app. Production runs under PM2 as `my-garmin-mcp` (assumed name, same as the project). After changing `.env` or deploying, restart it with `pm2 restart my-garmin-mcp`. `scripts/server.sh` is for local development only.
 
 ## Architecture
 
