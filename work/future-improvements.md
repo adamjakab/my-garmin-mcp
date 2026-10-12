@@ -25,7 +25,3 @@ Not exposed yet; `garminconnect` has getters for all of them.
 
 - `deploy/update.sh` only runs the tests; a `ruff check` gate would be one more line.
 - Rotating the access key means editing the Claude connector header by hand; there is no overlap period where two keys work.
-
-## Decisions still open
-
-- Whether this repo goes public (see the pre-public review in the checklist).

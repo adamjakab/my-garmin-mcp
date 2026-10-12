@@ -1,6 +1,6 @@
 # Checklist: a working Garmin MCP server, reachable from the phone
 
-Goal: Claude (including the mobile app) can read the owner's Garmin data, served by this project alone. Everything below is done except the pre-public review.
+Goal: Claude (including the mobile app) can read the owner's Garmin data, served by this project alone. Everything below is done.
 
 Done so far: Python (uv) server scaffold, `ping` tool, access key, `.env`, dev loop (see [AGENTS.md](../AGENTS.md)).
 
@@ -49,7 +49,7 @@ All date-range tools take `start_date` and `end_date` (YYYY-MM-DD, inclusive, en
 
 ## 5. Wrap-up
 
-- [ ] Before going public: review history and files for secrets and local paths
+- [x] Before going public: review history and files for secrets and local paths (2026-10-12: no secrets, tokens, emails or IPs anywhere; history keeps some local paths and an old hostname from deleted docs, accepted; MIT license added)
 
 ## Later
 
