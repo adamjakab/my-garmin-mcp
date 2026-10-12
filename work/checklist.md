@@ -31,7 +31,7 @@ All date-range tools take `start_date` and `end_date` (YYYY-MM-DD, inclusive, en
 - [x] Tool descriptions written for Claude, reusing the legacy wording where good
 - [x] Output sizes kept manageable (compact JSON, curated fields, range limits; one activity with every extra is ~54 KB, `details` alone at 300 s ~12 KB) for the phone's context
 - [x] Tests: pure logic (date ranges, sleep/VO2 extraction, bucketing) and each tool through the e2e client
-- [ ] Each tool tried for real through `Garmin-MCP-Local` against the actual account (all seven already verified through the full app in a scratch script; remaining: through the registered client after a tool-list refresh)
+- [x] Each tool tried for real through `Garmin-MCP-Local` against the actual account (2026-10-12: all seven answered for 5-11 Oct; `get_weight` had no weigh-ins that week, so body composition fields are still unseen)
 
 ## 4. Reachable from the phone (deploy to vps2)
 

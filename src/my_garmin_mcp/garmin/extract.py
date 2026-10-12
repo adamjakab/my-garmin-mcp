@@ -173,12 +173,13 @@ def bucket_details(details: dict[str, Any], bucket_seconds: int = 60) -> dict[st
     """Reduce per-second activity metrics to min/max/avg/count per time bucket (the raw payload is ~1 MB).
 
     Buckets are keyed by elapsed seconds since the start (sumDuration), falling back to the sample index.
-    Rows are compact lists in the order given by `columns`; GPS coordinates are left out.
+    Rows are compact lists in the order given by `columns`; GPS coordinates and running totals are left out.
     """
     descriptors = {d["metricsIndex"]: d["key"] for d in details.get("metricDescriptors") or []}
     rows = [r.get("metrics") or [] for r in details.get("activityDetailMetrics") or []]
     time_index = next((i for i, k in descriptors.items() if k == "sumDuration"), None)
-    skip = {"sumDuration", "directTimestamp", "directLatitude", "directLongitude"}
+    # Time axis, GPS and the running totals (sum*) say little per bucket; distance and duration are in the summary.
+    skip = {"directTimestamp", "directLatitude", "directLongitude"}
     buckets: dict[str, dict[int, list[float]]] = {}
     for n, row in enumerate(rows):
         elapsed = row[time_index] if time_index is not None and time_index < len(row) else n
@@ -186,7 +187,7 @@ def bucket_details(details: dict[str, Any], bucket_seconds: int = 60) -> dict[st
             continue
         start = int(elapsed // bucket_seconds) * bucket_seconds
         for i, key in descriptors.items():
-            if key in skip or i >= len(row) or row[i] is None:
+            if key in skip or key.startswith("sum") or i >= len(row) or row[i] is None:
                 continue
             buckets.setdefault(key, {}).setdefault(start, []).append(row[i])
     metrics = {

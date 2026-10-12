@@ -118,12 +118,13 @@ def test_bucket_details_groups_by_minute():
             {"metricsIndex": 0, "key": "sumDuration"},
             {"metricsIndex": 1, "key": "directHeartRate"},
             {"metricsIndex": 2, "key": "directTimestamp"},
+            {"metricsIndex": 3, "key": "sumDistance"},
         ],
         "activityDetailMetrics": [
-            {"metrics": [0, 100, 1000]},
-            {"metrics": [30, 110, 2000]},
-            {"metrics": [59, None, 3000]},
-            {"metrics": [60, 120, 4000]},
+            {"metrics": [0, 100, 1000, 0]},
+            {"metrics": [30, 110, 2000, 50]},
+            {"metrics": [59, None, 3000, 90]},
+            {"metrics": [60, 120, 4000, 99]},
         ],
         "geoPolylineDTO": {"huge": "dropped"},
     }
