@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Live. A Python MCP server (Python >= 3.12, managed with `uv`, official `mcp` SDK v2 `MCPServer`, Starlette/uvicorn) with API-key auth and eight tools: `ping` and seven Garmin tools (sleep, HRV, resting heart rate, VO2 max, weight, activities, one activity with extras), backed by the `garminconnect` library (cyberjunky). It runs on vps2 under PM2 behind NGINX and is used as a custom connector from Claude Code and the Claude mobile app. Ideas for later are in [work/future-improvements.md](work/future-improvements.md); the history of how it got here is in [work/checklist.md](work/checklist.md). The project was first scaffolded in Node/TypeScript and switched to Python because the best Garmin library is Python.
+Live. A Python MCP server (Python >= 3.12, managed with `uv`, official `mcp` SDK v2 `MCPServer`, Starlette/uvicorn) with API-key auth and eight tools: `ping` and seven Garmin tools (sleep, HRV, resting heart rate, VO2 max, weight, activities, one activity with extras), backed by the `garminconnect` library (cyberjunky). It runs on vps2 under PM2 behind NGINX and is used as a custom connector from Claude Code and the Claude mobile app. Ideas for later are in [work/future-improvements.md](work/future-improvements.md);; the checklist that took it live is [work/checklist.md](work/checklist.md).
 
 ## Commands
 
@@ -40,7 +40,3 @@ Deploy and update steps: [docs/deploy.md](docs/deploy.md) (with the NGINX and PM
 ## Purpose
 
 A personal MCP (Model Context Protocol) server, written in Python, that lets the Claude mobile app talk to the owner's Garmin account. It fetches health data from Garmin and serves it back to Claude through MCP tools.
-
-## Legacy projects
-
-This server replaced `my-garmin-api` (a Python REST wrapper around Garmin Connect, now deleted; everything worth keeping was ported). `adam_mcp`, the older personal MCP server whose Garmin tools were generated from that API, is a separate project that is stopped but kept, because it may be revived; [docs/legacy/adam_mcp.md](docs/legacy/adam_mcp.md) documents it. Do not add imports or paths pointing at sibling projects: port what you need instead.

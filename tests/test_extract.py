@@ -24,7 +24,7 @@ def test_parse_range_validates():
         parse_range("2026-01-01", "2026-03-01", 31)
 
 
-def test_sleep_summary_and_legacy_fallbacks():
+def test_sleep_summary_and_score_fallbacks():
     payload = {
         "dailySleepDTO": {
             "sleepTimeSeconds": 20400,

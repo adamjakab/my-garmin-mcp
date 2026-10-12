@@ -1,10 +1,10 @@
 # Future improvements
 
-Notes, not committed work. Turn an item into a work item (`work/open/`) when it is picked up. Parity with the legacy setup is done (see [checklist.md](checklist.md)).
+Notes, not committed work. Turn an item into a work item (`work/open/`) when it is picked up. The server itself is done (see [checklist.md](checklist.md)).
 
 ## More Garmin data
 
-The legacy setup never offered these; `garminconnect` has getters for all of them.
+Not exposed yet; `garminconnect` has getters for all of them.
 
 - Stress (`get_stress_data`), body battery, steps, daily and intraday heart rate
 - Training readiness and training status, SpO2, respiration, hydration, floors, intensity minutes
@@ -19,7 +19,7 @@ The legacy setup never offered these; `garminconnect` has getters for all of the
 - **Body composition:** only `weight_kg` has been seen, because the scale or app logs weight only. The other fields (`body_fat_pct`, `muscle_mass_kg`, ...) assume Garmin reports grams and are untested with real data.
 - **Missing activity id:** the error reads "connection problem (... 404 ...)". It could say plainly that the activity does not exist.
 - **Tool output** arrives wrapped as `{"result": "<escaped JSON>"}` because tools return compact JSON text. Returning structured content would avoid the escaping but pretty-prints long number lists; measure before changing.
-- Per-day tools make one Garmin request per day (3 at a time, max 31 days). If Garmin rate limits become a problem, add a small cache (the legacy project had an unused file cache).
+- Per-day tools make one Garmin request per day (3 at a time, max 31 days). If Garmin rate limits become a problem, add a small cache.
 
 ## Operations
 
@@ -28,5 +28,4 @@ The legacy setup never offered these; `garminconnect` has getters for all of the
 
 ## Decisions still open
 
-- Whether to revive adam_mcp (its mailbox and memory tools are not in this server); it is stopped on vps2 but kept.
 - Whether this repo goes public (see the pre-public review in the checklist).

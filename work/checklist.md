@@ -1,19 +1,19 @@
-# Checklist: reach parity with the legacy setup
+# Checklist: a working Garmin MCP server, reachable from the phone
 
-Goal: Claude (including the mobile app) can read the same Garmin data it could through the two legacy projects (`my-garmin-api` + `adam_mcp`), served by this project alone. `my-garmin-api` is gone (ported and deleted); what `adam_mcp` did is in [docs/legacy/adam_mcp.md](../docs/legacy/adam_mcp.md).
+Goal: Claude (including the mobile app) can read the owner's Garmin data, served by this project alone. Everything below is done except the pre-public review.
 
 Done so far: Python (uv) server scaffold, `ping` tool, access key, `.env`, dev loop (see [AGENTS.md](../AGENTS.md)).
 
 ## 1. Garmin login
 
 - [x] Use `garminconnect` (cyberjunky; decided over the Node `garmin-connect`). Spike done 2026-10-12: login with the `.env` credentials works (0.3.17, ~10 s, a few login strategies get a 429 before one succeeds), tokens are saved to `<GARMIN_TOKEN_STORE>/garmin_tokens.json` (the path is a directory) and the next login reuses them in ~0.5 s. `get_sleep_data` and `get_rhr_day` returned data. Tokens are only saved when `return_on_mfa` is off.
-- [x] One shared client, created once and reused (the legacy API logged in on every request): `GarminClient` in `src/my_garmin_mcp/garmin/client.py`, logins serialised, calls run in worker threads
+- [x] One shared client, created once and reused: `GarminClient` in `src/my_garmin_mcp/garmin/client.py`, logins serialised, calls run in worker threads
 - [x] Persist session tokens in `GARMIN_TOKEN_STORE` and refresh them; fall back to a credential login only when needed (verified: works from the token file with no credentials; a failed login is not retried for 15 minutes)
-- [x] Errors are thrown and returned as tool errors, never crash the process (the legacy code exited on HTTP 429): the client raises `GarminError` with a safe message; tools must let it surface as a tool error
+- [x] Errors are thrown and returned as tool errors, never crash the process: the client raises `GarminError` with a safe message; tools must let it surface as a tool error
 - [x] Tokens rejected 3 times in a row are deleted and logged, so the next request does a fresh login (tests in `tests/test_garmin_client.py`)
 - [x] MFA: deferred, not needed so far (login works without it); tracked in future-improvements.md
 
-## 2. Tools (the legacy set)
+## 2. Tools
 
 All date-range tools take `start_date` and `end_date` (YYYY-MM-DD, inclusive, end >= start).
 
@@ -28,7 +28,7 @@ All date-range tools take `start_date` and `end_date` (YYYY-MM-DD, inclusive, en
 
 ## 3. Shared quality
 
-- [x] Tool descriptions written for Claude, reusing the legacy wording where good
+- [x] Tool descriptions written for Claude
 - [x] Output sizes kept manageable (compact JSON, curated fields, range limits; one activity with every extra is ~54 KB, `details` alone at 300 s ~12 KB) for the phone's context
 - [x] Tests: pure logic (date ranges, sleep/VO2 extraction, bucketing) and each tool through the e2e client
 - [x] Each tool tried for real through `Garmin-MCP-Local` against the actual account (2026-10-12: all seven answered for 5-11 Oct; `get_weight` had no weigh-ins that week, so body composition fields are still unseen)
@@ -39,21 +39,18 @@ All date-range tools take `start_date` and `end_date` (YYYY-MM-DD, inclusive, en
 - [x] Get the code and a production `.env` onto vps2 (own access key, Garmin credentials); install with `uv sync --no-dev`; PM2 starts `uv run python -m my_garmin_mcp`
 - [x] Run under PM2 as `my-garmin-mcp` (add an ecosystem file) and make it survive reboots (`pm2 startup` + `pm2 save`)
 - [x] Pick a hostname and add a DNS record pointing it at vps2 (the name itself is kept out of the repo; it lives in the NGINX config on the server)
-- [x] NGINX: a server block for that hostname that proxies HTTPS to the app on `127.0.0.1:3336` (3334 belongs to adam-mcp on vps2)
+- [x] NGINX: a server block for that hostname that proxies HTTPS to the app on `127.0.0.1:3336`
   - [x] TLS certificate (e.g. Let's Encrypt via certbot) and an HTTP-to-HTTPS redirect
   - [x] Location exactly `/mcp` (no trailing slash), proxy buffering off, sensible timeouts
   - [x] Its own rate limit, and no logging of the `Authorization` header
 - [x] Add it as a custom connector in Claude with the `Authorization: Bearer <key>` request header
-- [x] Ask for each tool's data from the phone and compare with the legacy answers (tested from the phone 2026-10-12, works as expected)
+- [x] Ask for each tool's data from the phone and compare with the local server (tested from the phone 2026-10-12, works as expected)
 - [x] Write the deploy and update steps down (a short doc under `docs/`) so redeploys are repeatable
 
 ## 5. Wrap-up
 
-- [x] Anything still worth keeping from the legacy projects is ported here (the open leftovers are in future-improvements.md; adam_mcp is kept)
-- [x] Delete the legacy `my-garmin-api` project (2026-10-12: systemd service, NGINX block, certificate, DNS record and files on vps2, plus the local copy). `adam_mcp` is kept (stopped on vps2, NGINX symlink removed; its mailbox and memory tools may be revived later): its CNAME, certificate and PM2 block stay until decided
-- [x] Remove the `my-garmin-api` doc from `docs/legacy/` and update the migration section in `AGENTS.md` (`docs/legacy/adam_mcp.md` stays while adam_mcp is kept)
 - [ ] Before going public: review history and files for secrets and local paths
 
 ## Later
 
-Ideas for after parity (more data, robustness, operations) are in [future-improvements.md](future-improvements.md).
+Ideas for later (more data, robustness, operations) are in [future-improvements.md](future-improvements.md).
