@@ -11,7 +11,7 @@ Done so far: Python (uv) server scaffold, `ping` tool, access key, `.env`, dev l
 - [x] Persist session tokens in `GARMIN_TOKEN_STORE` and refresh them; fall back to a credential login only when needed (verified: works from the token file with no credentials; a failed login is not retried for 15 minutes)
 - [x] Errors are thrown and returned as tool errors, never crash the process (the legacy code exited on HTTP 429): the client raises `GarminError` with a safe message; tools must let it surface as a tool error
 - [x] Tokens rejected 3 times in a row are deleted and logged, so the next request does a fresh login (tests in `tests/test_garmin_client.py`)
-- [ ] Decide how to handle MFA, if the account ever asks for it (e.g. a one-time CLI login that writes the token file)
+- [x] MFA: deferred, not needed so far (login works without it); tracked in future-improvements.md
 
 ## 2. Tools (the legacy set)
 
@@ -43,17 +43,17 @@ All date-range tools take `start_date` and `end_date` (YYYY-MM-DD, inclusive, en
   - [x] TLS certificate (e.g. Let's Encrypt via certbot) and an HTTP-to-HTTPS redirect
   - [x] Location exactly `/mcp` (no trailing slash), proxy buffering off, sensible timeouts
   - [x] Its own rate limit, and no logging of the `Authorization` header
-- [ ] Add it as a custom connector in Claude with the `Authorization: Bearer <key>` request header
-- [ ] Ask for each tool's data from the phone and compare with the legacy answers
+- [x] Add it as a custom connector in Claude with the `Authorization: Bearer <key>` request header
+- [x] Ask for each tool's data from the phone and compare with the legacy answers (tested from the phone 2026-10-12, works as expected)
 - [x] Write the deploy and update steps down (a short doc under `docs/`) so redeploys are repeatable
 
 ## 5. Wrap-up
 
-- [ ] Anything still worth keeping from the legacy projects is ported here
+- [x] Anything still worth keeping from the legacy projects is ported here (the open leftovers are in future-improvements.md; adam_mcp is kept)
 - [ ] Delete the legacy `my-garmin-api` project. `adam_mcp` is kept for now (stopped on vps2, NGINX symlink removed; its mailbox and memory tools may be revived later): its CNAME, certificate and PM2 block stay until decided
 - [ ] Remove `docs/legacy/` and update the migration section in `AGENTS.md`
 - [ ] Before going public: review history and files for secrets and local paths
 
-## Later (not needed for parity)
+## Later
 
-Data the legacy setup never offered: stress, body battery, steps, heart rate, training readiness and status, SpO2, workouts, devices.
+Ideas for after parity (more data, robustness, operations) are in [future-improvements.md](future-improvements.md).
