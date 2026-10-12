@@ -2,12 +2,13 @@ import { createMcpHandler } from "@modelcontextprotocol/server";
 import express from "express";
 import { Readable } from "node:stream";
 import { bearerAuth } from "./auth/middleware.js";
-import type { KeyStore } from "./auth/keystore.js";
 import { createMcpServer } from "./server.js";
 
 /** Stateless: the handler builds a fresh McpServer per request, so restarts never invalidate client sessions. */
-export function createApp(keys: KeyStore) {
+export function createApp(verifyKey: (key: string) => boolean) {
   const mcp = createMcpHandler(() => createMcpServer(), {
+    // The SDK console.warn()s once at construction for this mode: expected, not a fault.
+    responseMode: "json",
     onerror: (err) => console.error("MCP error:", err),
   });
 
@@ -19,7 +20,7 @@ export function createApp(keys: KeyStore) {
   });
 
   // Express req/res <-> web-standard Request/Response bridge for the fetch-shaped MCP handler.
-  app.all("/mcp", bearerAuth(keys), async (req, res) => {
+  app.all("/mcp", bearerAuth(verifyKey), async (req, res) => {
     const headers = new Headers();
     for (const [k, v] of Object.entries(req.headers)) {
       if (v !== undefined) headers.set(k, Array.isArray(v) ? v.join(", ") : v);

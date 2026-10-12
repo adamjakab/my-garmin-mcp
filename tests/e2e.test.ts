@@ -1,38 +1,29 @@
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
-import fs from "node:fs";
 import type { AddressInfo } from "node:net";
-import os from "node:os";
-import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/app.js";
-import { KeyStore } from "../src/auth/keystore.js";
+import { accessKeyVerifier, generateKey } from "../src/auth/keys.js";
 
-let dir: string;
-let keys: KeyStore;
+const KEY = generateKey();
+const verify = accessKeyVerifier(KEY);
 let httpServer: ReturnType<ReturnType<typeof createApp>["listen"]>;
 let url: URL;
 
 beforeAll(async () => {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), "gmcp-"));
-  keys = new KeyStore(path.join(dir, "keys.json"));
-  httpServer = createApp(keys).listen(0, "127.0.0.1");
+  httpServer = createApp(verify).listen(0, "127.0.0.1");
   await new Promise((r) => httpServer.once("listening", r));
   url = new URL(`http://127.0.0.1:${(httpServer.address() as AddressInfo).port}/mcp`);
 });
 
 afterAll(() => {
   httpServer.close();
-  fs.rmSync(dir, { recursive: true, force: true });
 });
 
-describe("keystore", () => {
-  it("verifies created keys, rejects unknown ones, and supports revoke", () => {
-    const { key, stored } = keys.create("unit");
-    expect(keys.verify(key)?.id).toBe(stored.id);
-    expect(keys.verify("gmcp_nope")).toBeUndefined();
-    expect(fs.readFileSync(path.join(dir, "keys.json"), "utf8")).not.toContain(key);
-    keys.revoke("unit");
-    expect(keys.verify(key)).toBeUndefined();
+describe("access key", () => {
+  it("accepts only the configured key", () => {
+    expect(verify(KEY)).toBe(true);
+    expect(verify(generateKey())).toBe(false);
+    expect(accessKeyVerifier(undefined)("anything")).toBe(false);
   });
 });
 
@@ -42,12 +33,18 @@ describe("mcp over http", () => {
     expect(res.status).toBe(401);
   });
 
-  it("answers ping with a valid key", async () => {
-    const { key } = keys.create("e2e");
-    const client = new Client({ name: "test", version: "0" });
+  // The v2 client defaults to the 2025 handshake; pinning makes it speak 2026-07-28 or fail.
+  const eras = [
+    ["2025 era (client default)", undefined],
+    ["2026 era (pinned)", { mode: { pin: "2026-07-28" } } as const],
+  ] as const;
+
+  it.each(eras)("answers ping with a valid key, %s", async (_name, versionNegotiation) => {
+    const client = new Client({ name: "test", version: "0" }, { versionNegotiation });
     await client.connect(
-      new StreamableHTTPClientTransport(url, { requestInit: { headers: { Authorization: `Bearer ${key}` } } }),
+      new StreamableHTTPClientTransport(url, { requestInit: { headers: { Authorization: `Bearer ${KEY}` } } }),
     );
+    expect((await client.listTools()).tools.map((t) => t.name)).toEqual(["ping"]);
     const result = await client.callTool({ name: "ping" });
     expect(JSON.stringify(result.content)).toMatch(/pong/);
     await client.close();

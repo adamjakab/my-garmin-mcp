@@ -10,17 +10,19 @@ Scaffolded: a minimal MCP server (Node >= 24, TypeScript, Express, `@modelcontex
 
 - `npm run dev` - foreground server with file watching (`tsx watch`)
 - `npm run server -- start|stop|restart|status|logs` - background server (pid/log in `.run/`); restart after code changes so the tool list refreshes
-- `npm run keys -- create <name> | list | revoke <id|name>` - manage API keys (stored hashed in `data/keys.json`; plaintext shown once at creation)
+- `npm run rotate-key` - asks for confirmation (warns that clients using the old key break), then writes a new `MCP_ACCESS_KEY` into `.env` and prints it. Restart afterwards (`pm2 restart my-garmin-mcp` in production). `--yes` skips the prompt
 - `npm run typecheck`, `npm test` (vitest, includes an end-to-end MCP client test), `npm run build` / `npm start`
 
-Config via env: `PORT` (3334), `HOST` (127.0.0.1), `DATA_DIR` (`./data`).
+Config via `.env` (copy `.env.example`; gitignored): `PORT`, `HOST`, `DATA_DIR`, `GARMIN_EMAIL`, `GARMIN_PASSWORD`, `GARMIN_TOKEN_STORE`, `MCP_ACCESS_KEY` (the single access key). Real env vars override the file.
+
+Production runs under PM2 as `my-garmin-mcp` (assumed name, same as the project). After changing `.env` or deploying a build, restart it with `pm2 restart my-garmin-mcp`. `npm run server` is for local development only.
 
 ## Architecture
 
 - Streamable HTTP at `/mcp` via `createMcpHandler`, **stateless** (fresh server per request; small Express<->fetch bridge in `src/app.ts`), guarded by `Authorization: Bearer <key>`. `GET /health` is unauthenticated.
 - `src/tools/` - one file per tool, registered in `src/tools/index.ts`.
-- `src/auth/` - file-backed `KeyStore` (re-read on each call, so CLI changes apply without restart) and the bearer middleware.
-- No database; runtime state lives in `data/` (gitignored).
+- `src/auth/` - the single access key from `MCP_ACCESS_KEY` (compared as SHA-256 digests in constant time) and the bearer middleware. Changing the key needs a server restart.
+- No database; runtime state (e.g. Garmin tokens) lives in `data/` (gitignored).
 
 ## Connecting Claude Code to the local server
 
