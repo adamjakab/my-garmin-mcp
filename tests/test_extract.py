@@ -243,6 +243,31 @@ def test_body_battery_days_applies_local_offset():
     assert day["readings"] == [["02:00", 10]]
 
 
+GMT_4AM = 1_790_827_200_000  # 2026-10-01T04:00:00 UTC in epoch ms
+
+
+def test_body_battery_days_applies_offset_from_iso_timestamps():
+    day = _bb_day(
+        [[GMT_4AM, 10]], startTimestampGMT="2026-10-01T04:00:00.0", startTimestampLocal="2026-10-01T06:00:00.0"
+    )
+    [result] = body_battery_days([day])
+    assert result["readings"] == [["06:00", 10]]
+
+
+def test_body_battery_days_iso_timestamps_with_explicit_offsets():
+    day = _bb_day(
+        [[GMT_4AM, 10]], startTimestampGMT="2026-10-01T04:00:00+00:00", startTimestampLocal="2026-10-01T06:00:00+00:00"
+    )
+    [result] = body_battery_days([day])
+    assert result["readings"] == [["06:00", 10]]
+
+
+def test_body_battery_days_unparseable_iso_timestamp_means_no_offset():
+    day = _bb_day([[GMT_4AM, 10]], startTimestampGMT="not a date", startTimestampLocal="2026-10-01T06:00:00.0")
+    [result] = body_battery_days([day])
+    assert result["readings"] == [["04:00", 10]]
+
+
 def test_body_battery_days_skips_malformed_rows_and_empty_days():
     rows = [
         [0, "M", None, 1],
