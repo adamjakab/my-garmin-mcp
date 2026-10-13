@@ -125,6 +125,92 @@ def heart_rate_day(day: str, payload: dict[str, Any] | None, bucket_minutes: int
     )
 
 
+def _epoch_ms(value: Any) -> int | float | None:
+    """Epoch milliseconds from a number or an ISO string (read as UTC when it has no offset); None otherwise."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int | float):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value)
+        except ValueError:
+            return None
+        return parsed.replace(tzinfo=parsed.tzinfo or UTC).timestamp() * 1000
+    return None
+
+
+def _body_battery_level_index(entry: dict[str, Any]) -> int | None:
+    for descriptor in entry.get("bodyBatteryValueDescriptorDTOList") or []:
+        if isinstance(descriptor, dict) and descriptor.get("bodyBatteryValueDescriptorKey") == "bodyBatteryLevel":
+            index = descriptor.get("bodyBatteryValueDescriptorIndex")
+            if isinstance(index, int) and not isinstance(index, bool) and index >= 0:
+                return index
+    return None
+
+
+def body_battery_days(payload: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """Body Battery per day: highest, lowest, first/last level, charged/drained and a 2-hourly series.
+
+    `bodyBatteryValuesArray` holds [epoch ms GMT, status, level, version] rows (the level column is looked up in
+    `bodyBatteryValueDescriptorDTOList`); they are shifted to local wall-clock time with the offset between the
+    entry's local and GMT start timestamps and reduced to the last level per 2-hour bucket. Days without a valid
+    reading are left out; odd payloads never raise.
+    """
+    if not isinstance(payload, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for entry in payload:
+        if not isinstance(entry, dict):
+            continue
+        rows = entry.get("bodyBatteryValuesArray")
+        if not isinstance(rows, list | tuple):
+            continue
+        level_index = _body_battery_level_index(entry)
+        start_local, start_gmt = _epoch_ms(entry.get("startTimestampLocal")), _epoch_ms(entry.get("startTimestampGMT"))
+        offset = start_local - start_gmt if start_local is not None and start_gmt is not None else 0
+        readings: list[tuple[int | float, int | float]] = []
+        for row in rows:
+            if not isinstance(row, list | tuple):
+                continue
+            index = level_index if level_index is not None else (2 if len(row) >= 4 else 1)
+            if index == 0 or len(row) <= index:
+                continue
+            ts, level = row[0], row[index]
+            if isinstance(ts, bool) or not isinstance(ts, int | float):
+                continue
+            if isinstance(level, bool) or not isinstance(level, int | float):
+                continue
+            readings.append((ts, level))
+        if not readings:
+            continue
+        readings.sort(key=lambda r: r[0])
+        levels = [level for _, level in readings]
+        buckets: dict[int, int | float] = {}
+        for ts, level in readings:
+            local = datetime.fromtimestamp((ts + offset) / 1000, UTC)
+            buckets[local.hour // 2 * 120] = level
+        out.append(
+            _clean(
+                {
+                    "date": entry.get("date"),
+                    "highest": max(levels),
+                    "lowest": min(levels),
+                    "start": levels[0],
+                    "end": levels[-1],
+                    "charged": entry.get("charged"),
+                    "drained": entry.get("drained"),
+                    "columns": ["time", "level"],
+                    "readings": [
+                        [f"{start // 60:02d}:{start % 60:02d}", level] for start, level in sorted(buckets.items())
+                    ],
+                }
+            )
+        )
+    out.sort(key=lambda d: d.get("date") or "")
+    return out
+
+
 def vo2max_entries(payload: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
     """One entry per date that has a VO2 max value: running/generic and, when present, cycling."""
     out: list[dict[str, Any]] = []
