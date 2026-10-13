@@ -65,6 +65,7 @@ async def test_ping_with_valid_key(url):
                 "get_sleep",
                 "get_hrv",
                 "get_resting_hr",
+                "get_body_battery",
                 "get_heart_rate",
                 "get_vo2max",
                 "get_weight",

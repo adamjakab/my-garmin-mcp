@@ -3,6 +3,7 @@ import pytest
 from my_garmin_mcp.garmin.dates import InvalidRequest, days_in, parse_range
 from my_garmin_mcp.garmin.extract import (
     activity_list_item,
+    body_battery_days,
     bucket_details,
     flatten_activity,
     heart_rate_day,
@@ -190,3 +191,107 @@ def test_heart_rate_day_bucket_minutes():
 @pytest.mark.parametrize("payload", [None, {}, {"heartRateValues": []}, {"heartRateValues": [[GMT_START, None]]}])
 def test_heart_rate_day_none_without_readings(payload):
     assert heart_rate_day("2026-10-02", payload) is None
+
+
+def _bb_day(rows, date="2026-10-01", descriptors=None, **extra):
+    entry = {"date": date, "charged": 50, "drained": 40, "bodyBatteryValuesArray": rows, **extra}
+    if descriptors is not None:
+        entry["bodyBatteryValueDescriptorDTOList"] = [
+            {"bodyBatteryValueDescriptorIndex": i, "bodyBatteryValueDescriptorKey": k}
+            for i, k in enumerate(descriptors)
+        ]
+    return entry
+
+
+HOUR = 3_600_000
+
+
+def test_body_battery_days_summarises_and_downsamples():
+    rows = [
+        [0, "MEASURED", 30, 2.0],
+        [HOUR, "MEASURED", 40, 2.0],
+        [2 * HOUR, "MEASURED", 90, 2.0],
+        [3 * HOUR, "MEASURED", 70, 2.0],
+    ]
+    [day] = body_battery_days([_bb_day(rows)])
+    assert day == {
+        "date": "2026-10-01",
+        "highest": 90,
+        "lowest": 30,
+        "start": 30,
+        "end": 70,
+        "charged": 50,
+        "drained": 40,
+        "columns": ["time", "level"],
+        "readings": [["00:00", 40], ["02:00", 70]],
+    }
+
+
+def test_body_battery_days_uses_descriptor_level_index():
+    rows = [[0, 55, "MEASURED"], [HOUR, 65, "MEASURED"]]
+    [day] = body_battery_days([_bb_day(rows, descriptors=["timestamp", "bodyBatteryLevel", "bodyBatteryStatus"])])
+    assert (day["start"], day["end"]) == (55, 65)
+
+
+def test_body_battery_days_two_wide_rows_fallback():
+    [day] = body_battery_days([_bb_day([[0, 10], [HOUR, 20]])])
+    assert (day["lowest"], day["highest"]) == (10, 20)
+
+
+def test_body_battery_days_applies_local_offset():
+    [day] = body_battery_days([_bb_day([[0, 10]], startTimestampGMT=0, startTimestampLocal=3 * HOUR)])
+    assert day["readings"] == [["02:00", 10]]
+
+
+GMT_4AM = 1_790_827_200_000  # 2026-10-01T04:00:00 UTC in epoch ms
+
+
+def test_body_battery_days_applies_offset_from_iso_timestamps():
+    day = _bb_day(
+        [[GMT_4AM, 10]], startTimestampGMT="2026-10-01T04:00:00.0", startTimestampLocal="2026-10-01T06:00:00.0"
+    )
+    [result] = body_battery_days([day])
+    assert result["readings"] == [["06:00", 10]]
+
+
+def test_body_battery_days_iso_timestamps_with_explicit_offsets():
+    day = _bb_day(
+        [[GMT_4AM, 10]], startTimestampGMT="2026-10-01T04:00:00+00:00", startTimestampLocal="2026-10-01T06:00:00+00:00"
+    )
+    [result] = body_battery_days([day])
+    assert result["readings"] == [["06:00", 10]]
+
+
+def test_body_battery_days_unparseable_iso_timestamp_means_no_offset():
+    day = _bb_day([[GMT_4AM, 10]], startTimestampGMT="not a date", startTimestampLocal="2026-10-01T06:00:00.0")
+    [result] = body_battery_days([day])
+    assert result["readings"] == [["04:00", 10]]
+
+
+def test_body_battery_days_skips_malformed_rows_and_empty_days():
+    rows = [
+        [0, "M", None, 1],
+        [HOUR, "M", True, 1],
+        [2 * HOUR, "M", "x", 1],
+        "junk",
+        [3 * HOUR],
+        ["t", "M", 5, 1],
+        [4 * HOUR, "M", 44, 1],
+    ]
+    days = body_battery_days([_bb_day(rows), _bb_day([[0, "M", None, 1]], date="2026-10-02"), "junk"])
+    assert [d["date"] for d in days] == ["2026-10-01"]
+    assert days[0]["start"] == days[0]["end"] == 44
+
+
+@pytest.mark.parametrize(
+    "payload", [None, {}, [], "x", [{}], [{"bodyBatteryValuesArray": None}], [{"bodyBatteryValuesArray": []}]]
+)
+def test_body_battery_days_empty_payloads(payload):
+    assert body_battery_days(payload) == []
+
+
+def test_body_battery_days_keeps_date_order():
+    days = body_battery_days(
+        [_bb_day([[0, "M", 1, 1]], date="2026-10-02"), _bb_day([[0, "M", 2, 1]], date="2026-10-01")]
+    )
+    assert [d["date"] for d in days] == ["2026-10-01", "2026-10-02"]

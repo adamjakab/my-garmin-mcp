@@ -37,6 +37,23 @@ class FakeApi:
             "heartRateValues": [[0, 60], [60_000, 80], [120_000, None]],
         }
 
+    def get_body_battery(self, start, end):
+        self.calls.append(f"bb {start} {end}")
+        return [
+            {
+                "date": start,
+                "charged": 50,
+                "drained": 40,
+                "bodyBatteryValueDescriptorDTOList": [
+                    {"bodyBatteryValueDescriptorIndex": 0, "bodyBatteryValueDescriptorKey": "timestamp"},
+                    {"bodyBatteryValueDescriptorIndex": 1, "bodyBatteryValueDescriptorKey": "bodyBatteryStatus"},
+                    {"bodyBatteryValueDescriptorIndex": 2, "bodyBatteryValueDescriptorKey": "bodyBatteryLevel"},
+                ],
+                "bodyBatteryValuesArray": [[0, "MEASURED", 30], [60_000, "MEASURED", 80]],
+            },
+            {"date": end, "charged": 1, "drained": 2, "bodyBatteryValuesArray": []},
+        ]
+
     def get_activities_by_date(self, start, end):
         return [{"activityId": 7, "activityName": "Run", "activityType": {"typeKey": "running"}, "distance": 1000.0}]
 
@@ -61,8 +78,8 @@ class FakeApi:
 
 
 @asynccontextmanager
-async def session():
-    app = create_app(lambda k: k == KEY, GarminClient("e", "p", Path("/nonexistent"), factory=FakeApi))
+async def session(factory=FakeApi):
+    app = create_app(lambda k: k == KEY, GarminClient("e", "p", Path("/nonexistent"), factory=factory))
     http = httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
         base_url="http://127.0.0.1:8000",
@@ -149,3 +166,28 @@ async def test_get_heart_rate_rejects_bad_bucket_and_long_range():
         assert (
             await client.call_tool("get_heart_rate", {"start_date": "2026-10-01", "end_date": "2026-10-04"})
         ).is_error
+
+
+async def test_get_body_battery_summarises_days_in_one_request():
+    async with session() as client:
+        data = _data(await client.call_tool("get_body_battery", {"start_date": "2026-10-01", "end_date": "2026-10-03"}))
+        assert data["count"] == 1
+        day = data["body_battery"][0]
+        assert (day["date"], day["highest"], day["lowest"], day["start"], day["end"]) == ("2026-10-01", 80, 30, 30, 80)
+        assert day["readings"] == [["00:00", 80]]
+        assert day["charged"] == 50
+
+
+async def test_get_body_battery_makes_one_garmin_call():
+    api = FakeApi()
+    async with session(lambda *_: api) as client:
+        await client.call_tool("get_body_battery", {"start_date": "2026-10-01", "end_date": "2026-10-05"})
+    assert api.calls == ["bb 2026-10-01 2026-10-05"]
+
+
+async def test_get_body_battery_rejects_long_range_and_bad_date():
+    async with session() as client:
+        assert (
+            await client.call_tool("get_body_battery", {"start_date": "2026-10-01", "end_date": "2026-11-01"})
+        ).is_error
+        assert (await client.call_tool("get_body_battery", {"start_date": "nope", "end_date": "2026-10-01"})).is_error

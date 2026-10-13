@@ -20,3 +20,22 @@ Body Battery is one of the headline Garmin recovery metrics and is listed under 
 - Open design points for the plan: single date vs range (per-day tools make one request per day, max 31 days, 3 in parallel), and the exact fields to return.
 
 Depends on: none
+
+## Outcome
+
+> Implemented: 2026-10-13
+
+Added the `get_body_battery` tool. It makes one `Garmin.get_body_battery(start, end)` request for the whole range (max 31 days, `MAX_DAYS_BODY_BATTERY`) and reduces each day with the pure extractor `body_battery_days` in `garmin/extract.py` (highest, lowest, start, end, charged, drained, plus a 2-hourly `[time, level]` series). Version bumped to 0.5.0; README, AGENTS.md and `work/future-improvements.md` updated.
+
+### Deviations from the plan
+
+- Added an optional `factory` parameter to the `session()` test helper so the one-call test can inspect the fake API's calls.
+- ISO-string timestamps are handled through a small `_epoch_ms` helper (numbers or ISO strings, else offset 0).
+
+### Validation
+
+- `uv run ruff check .` and `ruff format --check .`: pass
+- `uv lock --check`: pass
+- `uv run pytest` on `test_extract.py`, `test_version.py`, `test_garmin_client.py`, `test_tools.py`: 51 passed
+- `uv run pytest tests/test_e2e.py`: 4 passed
+- No type checker configured. Live-data check not run (no credentials), so the real Garmin payload shape is unverified.
