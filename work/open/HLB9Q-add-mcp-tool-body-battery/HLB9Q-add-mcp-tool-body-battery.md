@@ -1,0 +1,22 @@
+# HLB9Q — Add MCP tool: body battery
+
+> Captured: 2026-10-13 Type: Enhancement
+
+## What
+
+Add a ninth Garmin tool, `get_body_battery`, to the my-garmin-mcp server. It returns the owner's Garmin Body Battery data for a date or date range, backed by the `garminconnect` getters (e.g. `get_body_battery`, and `get_body_battery_events` if useful). It follows the existing tool pattern: a `register(server)` file in `src/my_garmin_mcp/tools/`, wired up in `tools/__init__.py`; payload shaping as pure, unit-tested code in `garmin/extract.py`; date handling and range limits via `garmin/dates.py`; calls through `GarminClient.call`; compact JSON text output; failures raised as `ToolError`s (`GarminError`, `InvalidRequest`).
+
+The output should stay compact for phone context: per-day summary (e.g. highest, lowest, start/end of day, charged/drained totals) rather than the full raw time series, unless the plan decides a downsampled series is worth including.
+
+## Why
+
+Body Battery is one of the headline Garmin recovery metrics and is listed under "More Garmin data" in `work/future-improvements.md` as not yet exposed. Sleep, HRV, resting HR and heart rate are already available, so body battery completes the picture of recovery/energy for Claude to reason about.
+
+## Notes
+
+- Bump the version in `pyproject.toml` and `__version__` in `src/my_garmin_mcp/__init__.py`, then run `uv lock` (previous tool work bumped the minor version).
+- Update the tool count/list in README.md, CLAUDE.md/AGENTS.md and any docs listing tools; remove body battery from `work/future-improvements.md`.
+- Extend the end-to-end MCP client test and add unit tests for the extractor. Real Garmin response shapes are unverified here; the plan should check the `garminconnect` return format and handle days with missing data.
+- Open design points for the plan: single date vs range (per-day tools make one request per day, max 31 days, 3 in parallel), and the exact fields to return.
+
+Depends on: none
