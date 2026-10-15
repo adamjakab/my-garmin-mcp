@@ -9,6 +9,7 @@ MAX_DAYS_PER_DAY_TOOLS = 31
 MAX_DAYS_SINGLE_REQUEST = 366
 MAX_DAYS_ACTIVITIES = 92
 MAX_DAYS_HEART_RATE = 3  # each day returns a full time series
+MAX_DAYS_STRESS = 7  # one request per day, each day carries a time series
 MAX_DAYS_BODY_BATTERY = 31  # one request for the whole range, each day carries a time series
 CONCURRENCY = 3
 

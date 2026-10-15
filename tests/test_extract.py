@@ -10,6 +10,7 @@ from my_garmin_mcp.garmin.extract import (
     hrv_summary,
     resting_hr,
     sleep_summary,
+    stress_day,
     vo2max_entries,
     weight_entries,
 )
@@ -295,3 +296,94 @@ def test_body_battery_days_keeps_date_order():
         [_bb_day([[0, "M", 1, 1]], date="2026-10-02"), _bb_day([[0, "M", 2, 1]], date="2026-10-01")]
     )
     assert [d["date"] for d in days] == ["2026-10-01", "2026-10-02"]
+
+
+def _stress_payload(**extra):
+    return {
+        "calendarDate": "2026-10-01",
+        "startTimestampGMT": 0,
+        "startTimestampLocal": 0,
+        "stressValuesArray": [[0, 20], [60_000, 40], [1_800_000, 0]],
+        **extra,
+    }
+
+
+def test_stress_day_summarises_and_buckets():
+    day = stress_day(
+        "2026-10-01",
+        _stress_payload(
+            avgStressLevel=33,
+            maxStressLevel=90,
+            restStressDuration=3600,
+            lowStressDuration=1800,
+            mediumStressDuration=600,
+            highStressDuration=0,
+        ),
+    )
+    assert day == {
+        "date": "2026-10-01",
+        "avg_stress": 33,
+        "max_stress": 90,
+        "rest_min": 60,
+        "low_min": 30,
+        "medium_min": 10,
+        "high_min": 0,
+        "bucket_minutes": 30,
+        "columns": ["time", "level"],
+        "readings": [["00:00", 30], ["00:30", 0]],
+    }
+
+
+def test_stress_day_applies_local_offset():
+    payload = _stress_payload(startTimestampLocal=3 * 3600_000)
+    assert stress_day("d", payload)["readings"][0] == ["03:00", 30]
+
+
+def test_stress_day_handles_iso_timestamps():
+    payload = _stress_payload(startTimestampGMT="2026-10-01T00:00:00", startTimestampLocal="2026-10-01T03:00:00")
+    assert stress_day("d", payload)["readings"][0][0] == "03:00"
+
+
+def test_stress_day_drops_invalid_rows_and_falls_back_to_computed_summary():
+    payload = {
+        "startTimestampGMT": 0,
+        "startTimestampLocal": 0,
+        "stressValuesArray": [[0, -1], [1, -2], [2, None], [3, True], [4, 101], [True, 10], "x", [5], [6, 50], [7, 0]],
+    }
+    day = stress_day("2026-10-02", payload)
+    assert day["date"] == "2026-10-02"
+    assert (day["avg_stress"], day["max_stress"]) == (25, 50)
+    assert day["readings"] == [["00:00", 25]]
+    assert "rest_min" not in day
+
+
+def test_stress_day_ignores_negative_summary_values():
+    day = stress_day("d", _stress_payload(avgStressLevel=-1, overallStressLevel=28, maxStressLevel=-2))
+    assert (day["avg_stress"], day["max_stress"]) == (28, 40)
+
+
+def test_stress_day_custom_bucket_minutes():
+    day = stress_day("d", _stress_payload(), bucket_minutes=60)
+    assert day["bucket_minutes"] == 60
+    assert day["readings"] == [["00:00", 20]]
+
+
+def test_stress_day_summary_only():
+    day = stress_day("d", {"avgStressLevel": 30, "maxStressLevel": 70})
+    assert day == {"date": "d", "avg_stress": 30, "max_stress": 70}
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        None,
+        {},
+        [],
+        "x",
+        {"stressValuesArray": []},
+        {"stressValuesArray": [[0, -1], [1, None]]},
+        {"stressValuesArray": 5},
+    ],
+)
+def test_stress_day_without_data_is_none(payload):
+    assert stress_day("d", payload) is None

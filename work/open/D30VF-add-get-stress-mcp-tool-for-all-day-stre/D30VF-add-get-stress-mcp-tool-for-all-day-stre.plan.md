@@ -88,8 +88,14 @@ Mirror `get_heart_rate` (per-day request via `per_day` in `tools/_common.py`, ca
 **Tool shape (from `heart_rate.py`):**
 
 ```python
-days = await per_day(garmin, start_date, end_date, MAX_DAYS_HEART_RATE,
-                     lambda g, d: g.get_heart_rates(d), lambda day, payload: heart_rate_day(day, payload, bucket_minutes))
+days = await per_day(
+    garmin,
+    start_date,
+    end_date,
+    MAX_DAYS_HEART_RATE,
+    lambda g, d: g.get_heart_rates(d),
+    lambda day, payload: heart_rate_day(day, payload, bucket_minutes),
+)
 return as_json({"start_date": start_date, "end_date": end_date, "count": len(days), "heart_rate": days})
 ```
 

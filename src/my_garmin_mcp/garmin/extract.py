@@ -333,3 +333,82 @@ def bucket_details(details: dict[str, Any], bucket_seconds: int = 60) -> dict[st
         "columns": ["seconds_since_start", "min", "max", "avg", "count"],
         "metrics": metrics,
     }
+
+
+def _stress_level(value: Any) -> int | float | None:
+    """A stress level 0-100; None for negatives (-1 unmeasurable, -2 too much motion), null and non-numbers."""
+    if isinstance(value, bool) or not isinstance(value, int | float) or not 0 <= value <= 100:
+        return None
+    return value
+
+
+def _stress_minutes(seconds: Any) -> int | None:
+    if isinstance(seconds, bool) or not isinstance(seconds, int | float) or seconds < 0:
+        return None
+    return round(seconds / 60)
+
+
+def stress_day(day: str, payload: dict[str, Any] | None, bucket_minutes: int = 30) -> dict[str, Any] | None:
+    """All-day stress: average/max level, minutes per stress band and a mean level per local-time bucket.
+
+    `stressValuesArray` holds [epoch ms GMT, level] pairs about every 3 minutes; they are shifted to local
+    wall-clock time with the offset between the payload's local and GMT start timestamps before bucketing.
+    Negative and null levels are no reading. None when there is neither a reading nor a summary value; odd
+    payloads never raise.
+    """
+    if not isinstance(payload, dict):
+        return None
+    start_local, start_gmt = _epoch_ms(payload.get("startTimestampLocal")), _epoch_ms(payload.get("startTimestampGMT"))
+    offset = start_local - start_gmt if start_local is not None and start_gmt is not None else 0
+    rows = payload.get("stressValuesArray")
+    buckets: dict[int, list[int | float]] = {}
+    levels: list[int | float] = []
+    for row in rows if isinstance(rows, list | tuple) else []:
+        if not isinstance(row, list | tuple) or len(row) < 2:
+            continue
+        ts, level = row[0], _stress_level(row[1])
+        if isinstance(ts, bool) or not isinstance(ts, int | float) or level is None:
+            continue
+        local = datetime.fromtimestamp((ts + offset) / 1000, UTC)
+        start = (local.hour * 60 + local.minute) // bucket_minutes * bucket_minutes
+        buckets.setdefault(start, []).append(level)
+        levels.append(level)
+    avg = next(
+        (
+            v
+            for v in (_stress_level(payload.get("avgStressLevel")), _stress_level(payload.get("overallStressLevel")))
+            if v is not None
+        ),
+        None,
+    )
+    if avg is None and levels:
+        avg = round(sum(levels) / len(levels))
+    peak = _stress_level(payload.get("maxStressLevel"))
+    if peak is None and levels:
+        peak = max(levels)
+    durations = {
+        "rest_min": _stress_minutes(payload.get("restStressDuration")),
+        "low_min": _stress_minutes(payload.get("lowStressDuration")),
+        "medium_min": _stress_minutes(payload.get("mediumStressDuration")),
+        "high_min": _stress_minutes(payload.get("highStressDuration")),
+    }
+    if not levels and avg is None and peak is None:
+        return None
+    result = {
+        "date": payload.get("calendarDate") or day,
+        "avg_stress": avg,
+        "max_stress": peak,
+        **durations,
+    }
+    if levels:
+        result.update(
+            {
+                "bucket_minutes": bucket_minutes,
+                "columns": ["time", "level"],
+                "readings": [
+                    [f"{start // 60:02d}:{start % 60:02d}", round(sum(vals) / len(vals))]
+                    for start, vals in sorted(buckets.items())
+                ],
+            }
+        )
+    return _clean(result)
