@@ -412,3 +412,74 @@ def stress_day(day: str, payload: dict[str, Any] | None, bucket_minutes: int = 3
             }
         )
     return _clean(result)
+
+
+def _tr_number(value: Any) -> int | float | None:
+    return None if isinstance(value, bool) or not isinstance(value, int | float) else value
+
+
+def _tr_text(value: Any) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
+def _tr_time(value: Any) -> str | None:
+    """Local HH:MM from an ISO string or epoch milliseconds; None when unparseable."""
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value).strftime("%H:%M")
+        except ValueError:
+            pass
+    ms = _epoch_ms(value)
+    if ms is None:
+        return None
+    try:
+        return datetime.fromtimestamp(ms / 1000, UTC).strftime("%H:%M")
+    except (OverflowError, OSError, ValueError):
+        return None
+
+
+_TRAINING_READINESS_FACTORS = {
+    "sleep": "sleepScoreFactor",
+    "recovery": "recoveryTimeFactor",
+    "load": "acwrFactor",
+    "hrv": "hrvFactor",
+    "stress": "stressHistoryFactor",
+}
+
+
+def training_readiness_day(day: str, payload: list[dict[str, Any]] | dict[str, Any] | None) -> dict[str, Any] | None:
+    """Training readiness: score, level, short feedback and the contributing factors of the day's latest snapshot.
+
+    Garmin returns a list of snapshots per day (wake-up reset, scheduled updates); the one with the greatest
+    `timestamp` is used. None when there is neither a numeric score nor a level; odd payloads never raise.
+    """
+    if isinstance(payload, dict):
+        payload = [payload]
+    snapshots = [p for p in payload if isinstance(p, dict)] if isinstance(payload, list) else []
+    if not snapshots:
+        return None
+    # Entries without a (string) timestamp sort lowest; max keeps the first of equals, so reverse for "later wins".
+    latest = max(reversed(snapshots), key=lambda p: _tr_text(p.get("timestamp")) or "")
+    score, level = _tr_number(latest.get("score")), _tr_text(latest.get("level"))
+    if score is None and level is None:
+        return None
+    factors = {}
+    for name, prefix in _TRAINING_READINESS_FACTORS.items():
+        factor = _clean(
+            {"pct": _tr_number(latest.get(f"{prefix}Percent")), "feedback": _tr_text(latest.get(f"{prefix}Feedback"))}
+        )
+        if factor:
+            factors[name] = factor
+    return _clean(
+        {
+            "date": _tr_text(latest.get("calendarDate")) or day,
+            "score": score,
+            "level": level,
+            "feedback": _tr_text(latest.get("feedbackShort")),
+            "time": _tr_time(latest.get("timestampLocal")),
+            "sleep_score": _tr_number(latest.get("sleepScore")),
+            "recovery_min": _tr_number(latest.get("recoveryTime")),
+            "recovery_phase": _tr_text(latest.get("recoveryTimeChangePhrase")),
+            "factors": factors or None,
+        }
+    )

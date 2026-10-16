@@ -21,6 +21,7 @@ What the `garminconnect` library can reach, and which parts this server exposes.
 | All-day heart rate | Yes (`get_heart_rate`) |
 | Body battery | Yes (`get_body_battery`) |
 | All-day stress | Yes (`get_stress`) |
+| Training readiness | Yes (`get_training_readiness`) |
 | VO2 max | Yes (`get_vo2max`) |
 | Weight | Yes (`get_weight`) |
 | Activity lists | Yes (`get_activities`) |
@@ -38,7 +39,7 @@ What the `garminconnect` library can reach, and which parts this server exposes.
 | Respiration, SpO2 | No |
 | Intensity minutes | No |
 | Hydration | No |
-| Training readiness, training status | No |
+| Training status | No |
 | Endurance score, hill score | No |
 | Max metrics, fitness age | No |
 | Race predictions, lactate threshold | No |

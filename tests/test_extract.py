@@ -11,6 +11,7 @@ from my_garmin_mcp.garmin.extract import (
     resting_hr,
     sleep_summary,
     stress_day,
+    training_readiness_day,
     vo2max_entries,
     weight_entries,
 )
@@ -387,3 +388,59 @@ def test_stress_day_summary_only():
 )
 def test_stress_day_without_data_is_none(payload):
     assert stress_day("d", payload) is None
+
+
+def _tr(**kw):
+    return {"calendarDate": "2026-10-01", "timestamp": "2026-10-01T05:00:00.0", "score": 70, "level": "HIGH", **kw}
+
+
+def test_training_readiness_picks_latest_snapshot_and_maps_factors():
+    early = _tr(score=50, level="MODERATE")
+    late = _tr(
+        timestamp="2026-10-01T09:00:00.0",
+        timestampLocal="2026-10-01T11:30:00.0",
+        feedbackShort="GOOD_DAY",
+        feedbackLong="long text",
+        sleepScore=80,
+        recoveryTime=120,
+        recoveryTimeChangePhrase="PHRASE",
+        sleepScoreFactorPercent=90,
+        sleepScoreFactorFeedback="GOOD",
+        hrvFactorPercent=70,
+        acwrFactorFeedback="OK",
+    )
+    assert training_readiness_day("2026-10-01", [late, early]) == {
+        "date": "2026-10-01",
+        "score": 70,
+        "level": "HIGH",
+        "feedback": "GOOD_DAY",
+        "time": "11:30",
+        "sleep_score": 80,
+        "recovery_min": 120,
+        "recovery_phase": "PHRASE",
+        "factors": {
+            "sleep": {"pct": 90, "feedback": "GOOD"},
+            "load": {"feedback": "OK"},
+            "hrv": {"pct": 70},
+        },
+    }
+    assert training_readiness_day("2026-10-01", [early, late])["score"] == 70
+
+
+def test_training_readiness_accepts_single_dict_and_keeps_zero_score():
+    result = training_readiness_day("2026-10-01", {"score": 0, "level": "POOR"})
+    assert result == {"date": "2026-10-01", "score": 0, "level": "POOR"}
+
+
+@pytest.mark.parametrize("payload", [None, [], {}, "x", 5, [None, "x"], [{"timestamp": "t"}], [{"score": True}]])
+def test_training_readiness_empty_or_odd_payload_is_none(payload):
+    assert training_readiness_day("2026-10-01", payload) is None
+
+
+def test_training_readiness_odd_types_never_raise():
+    result = training_readiness_day(
+        "2026-10-01",
+        [{"score": 60, "level": 5, "timestamp": 3, "timestampLocal": "garbage", "hrvFactorPercent": "90"}],
+    )
+    assert result == {"date": "2026-10-01", "score": 60}
+    assert "time" not in training_readiness_day("2026-10-01", [_tr(timestampLocal=None)])
