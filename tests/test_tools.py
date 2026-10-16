@@ -37,6 +37,18 @@ class FakeApi:
             "heartRateValues": [[0, 60], [60_000, 80], [120_000, None]],
         }
 
+    def get_stress_data(self, day):
+        self.calls.append(f"stress {day}")
+        if day.endswith("-02"):
+            return {"stressValuesArray": []}
+        return {
+            "calendarDate": day,
+            "avgStressLevel": 30,
+            "maxStressLevel": 80,
+            "restStressDuration": 600,
+            "stressValuesArray": [[0, 20], [60_000, 40], [120_000, -1]],
+        }
+
     def get_body_battery(self, start, end):
         self.calls.append(f"bb {start} {end}")
         return [
@@ -191,3 +203,26 @@ async def test_get_body_battery_rejects_long_range_and_bad_date():
             await client.call_tool("get_body_battery", {"start_date": "2026-10-01", "end_date": "2026-11-01"})
         ).is_error
         assert (await client.call_tool("get_body_battery", {"start_date": "nope", "end_date": "2026-10-01"})).is_error
+
+
+async def test_get_stress_returns_days_and_skips_empty_ones():
+    async with session() as client:
+        data = _data(await client.call_tool("get_stress", {"start_date": "2026-10-01", "end_date": "2026-10-03"}))
+        assert data["count"] == 2
+        assert [d["date"] for d in data["stress"]] == ["2026-10-01", "2026-10-03"]
+        assert data["stress"][0]["readings"] == [["00:00", 30]]
+        assert (data["stress"][0]["avg_stress"], data["stress"][0]["max_stress"]) == (30, 80)
+        assert data["stress"][0]["rest_min"] == 10
+
+
+async def test_get_stress_makes_one_request_per_day():
+    api = FakeApi()
+    async with session(lambda *_: api) as client:
+        _data(await client.call_tool("get_stress", {"start_date": "2026-10-01", "end_date": "2026-10-03"}))
+    assert sorted(api.calls) == ["stress 2026-10-01", "stress 2026-10-02", "stress 2026-10-03"]
+
+
+async def test_get_stress_rejects_long_range_and_bad_date():
+    async with session() as client:
+        assert (await client.call_tool("get_stress", {"start_date": "2026-10-01", "end_date": "2026-10-08"})).is_error
+        assert (await client.call_tool("get_stress", {"start_date": "nope", "end_date": "2026-10-01"})).is_error
