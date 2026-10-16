@@ -8,8 +8,10 @@ from my_garmin_mcp.garmin.extract import (
     flatten_activity,
     heart_rate_day,
     hrv_summary,
+    respiration_day,
     resting_hr,
     sleep_summary,
+    spo2_day,
     stress_day,
     training_readiness_day,
     vo2max_entries,
@@ -444,3 +446,150 @@ def test_training_readiness_odd_types_never_raise():
     )
     assert result == {"date": "2026-10-01", "score": 60}
     assert "time" not in training_readiness_day("2026-10-01", [_tr(timestampLocal=None)])
+
+
+def _spo2_payload(**extra):
+    return {
+        "calendarDate": "2026-10-01",
+        "startTimestampGMT": 0,
+        "startTimestampLocal": 0,
+        "spO2HourlyAverages": [[0, 96], [1_800_000, 94], [3_600_000, 98]],
+        **extra,
+    }
+
+
+def test_spo2_day_summarises_and_buckets():
+    day = spo2_day("d", _spo2_payload(averageSpO2=95, lowestSpO2=88, latestSpO2=97, avgSleepSpO2=93))
+    assert day == {
+        "date": "2026-10-01",
+        "avg_spo2": 95,
+        "lowest_spo2": 88,
+        "latest_spo2": 97,
+        "avg_sleep_spo2": 93,
+        "bucket_minutes": 60,
+        "columns": ["time", "value"],
+        "readings": [["00:00", 95], ["01:00", 98]],
+    }
+
+
+def test_spo2_day_applies_local_offset_across_midnight():
+    payload = _spo2_payload(startTimestampLocal=-3600_000)
+    assert spo2_day("d", payload)["readings"] == [["00:00", 98], ["23:00", 95]]
+
+
+def test_spo2_day_handles_iso_timestamps():
+    payload = _spo2_payload(startTimestampGMT="2026-10-01T00:00:00", startTimestampLocal="2026-10-01T03:00:00")
+    assert spo2_day("d", payload)["readings"][0][0] == "03:00"
+
+
+def test_spo2_day_drops_invalid_rows_and_falls_back_to_computed_summary():
+    payload = {
+        "spO2HourlyAverages": [[0, 0], [1, -1], [2, None], [3, True], [4, 101], [True, 90], "x", [5], [6, 90], [7, 94]],
+        "averageSpO2": 0,
+        "lowestSpO2": -1,
+    }
+    day = spo2_day("2026-10-02", payload)
+    assert day["date"] == "2026-10-02"
+    assert (day["avg_spo2"], day["lowest_spo2"]) == (92, 90)
+    assert day["readings"] == [["00:00", 92]]
+    assert "latest_spo2" not in day
+
+
+def test_spo2_day_summary_only():
+    assert spo2_day("d", {"averageSpO2": 95, "lowestSpO2": 90}) == {"date": "d", "avg_spo2": 95, "lowest_spo2": 90}
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        None,
+        {},
+        [],
+        "x",
+        {"spO2HourlyAverages": []},
+        {"spO2HourlyAverages": [[0, 0], [1, None]], "averageSpO2": None},
+        {"spO2HourlyAverages": 5},
+    ],
+)
+def test_spo2_day_without_data_is_none(payload):
+    assert spo2_day("d", payload) is None
+
+
+def _respiration_payload(**extra):
+    return {
+        "calendarDate": "2026-10-01",
+        "startTimestampGMT": 0,
+        "startTimestampLocal": 0,
+        "respirationValuesArray": [[0, 14], [120_000, 15], [1_800_000, 12.5]],
+        **extra,
+    }
+
+
+def test_respiration_day_summarises_and_buckets():
+    day = respiration_day(
+        "d",
+        _respiration_payload(
+            lowestRespirationValue=9,
+            highestRespirationValue=22,
+            avgWakingRespirationValue=15,
+            avgSleepRespirationValue=13,
+        ),
+    )
+    assert day == {
+        "date": "2026-10-01",
+        "lowest_respiration": 9,
+        "highest_respiration": 22,
+        "avg_waking_respiration": 15,
+        "avg_sleep_respiration": 13,
+        "bucket_minutes": 30,
+        "columns": ["time", "value"],
+        "readings": [["00:00", 14.5], ["00:30", 12.5]],
+    }
+
+
+def test_respiration_day_applies_local_offset_and_iso():
+    assert respiration_day("d", _respiration_payload(startTimestampLocal=3 * 3600_000))["readings"][0][0] == "03:00"
+    iso = _respiration_payload(startTimestampGMT="2026-10-01T00:00:00", startTimestampLocal="2026-10-01T03:00:00")
+    assert respiration_day("d", iso)["readings"][0][0] == "03:00"
+
+
+def test_respiration_day_drops_invalid_rows_and_falls_back_to_computed_summary():
+    payload = {
+        "respirationValuesArray": [
+            [0, -1],
+            [1, 0],
+            [2, None],
+            [3, True],
+            [4, 101],
+            [True, 10],
+            "x",
+            [5],
+            [6, 12],
+            [7, 16],
+        ],
+        "lowestRespirationValue": -1,
+    }
+    day = respiration_day("2026-10-02", payload)
+    assert (day["lowest_respiration"], day["highest_respiration"]) == (12, 16)
+    assert day["readings"] == [["00:00", 14]]
+    assert "avg_sleep_respiration" not in day
+
+
+def test_respiration_day_summary_only():
+    assert respiration_day("d", {"avgSleepRespirationValue": 13.5}) == {"date": "d", "avg_sleep_respiration": 13.5}
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        None,
+        {},
+        [],
+        "x",
+        {"respirationValuesArray": []},
+        {"respirationValuesArray": [[0, -1], [1, None], [2, 0]], "lowestRespirationValue": -1},
+        {"respirationValuesArray": 5},
+    ],
+)
+def test_respiration_day_without_data_is_none(payload):
+    assert respiration_day("d", payload) is None
