@@ -49,6 +49,22 @@ class FakeApi:
             "stressValuesArray": [[0, 20], [60_000, 40], [120_000, -1]],
         }
 
+    def get_training_readiness(self, day):
+        self.calls.append(f"tr {day}")
+        if day.endswith("-02"):
+            return []
+        return [
+            {"calendarDate": day, "timestamp": f"{day}T05:00:00.0", "score": 40, "level": "LOW"},
+            {
+                "calendarDate": day,
+                "timestamp": f"{day}T09:00:00.0",
+                "timestampLocal": f"{day}T11:00:00.0",
+                "score": 75,
+                "level": "HIGH",
+                "hrvFactorPercent": 80,
+            },
+        ]
+
     def get_body_battery(self, start, end):
         self.calls.append(f"bb {start} {end}")
         return [
@@ -226,3 +242,32 @@ async def test_get_stress_rejects_long_range_and_bad_date():
     async with session() as client:
         assert (await client.call_tool("get_stress", {"start_date": "2026-10-01", "end_date": "2026-10-08"})).is_error
         assert (await client.call_tool("get_stress", {"start_date": "nope", "end_date": "2026-10-01"})).is_error
+
+
+async def test_get_training_readiness_returns_days_and_skips_empty_ones():
+    async with session() as client:
+        data = _data(
+            await client.call_tool("get_training_readiness", {"start_date": "2026-10-01", "end_date": "2026-10-03"})
+        )
+        assert data["count"] == 2
+        assert [d["date"] for d in data["training_readiness"]] == ["2026-10-01", "2026-10-03"]
+        first = data["training_readiness"][0]
+        assert (first["score"], first["level"], first["time"]) == (75, "HIGH", "11:00")
+        assert first["factors"] == {"hrv": {"pct": 80}}
+
+
+async def test_get_training_readiness_makes_one_request_per_day():
+    api = FakeApi()
+    async with session(lambda *_: api) as client:
+        _data(await client.call_tool("get_training_readiness", {"start_date": "2026-10-01", "end_date": "2026-10-03"}))
+    assert sorted(api.calls) == ["tr 2026-10-01", "tr 2026-10-02", "tr 2026-10-03"]
+
+
+async def test_get_training_readiness_rejects_long_range_and_bad_date():
+    async with session() as client:
+        assert (
+            await client.call_tool("get_training_readiness", {"start_date": "2026-10-01", "end_date": "2026-11-05"})
+        ).is_error
+        assert (
+            await client.call_tool("get_training_readiness", {"start_date": "nope", "end_date": "2026-10-01"})
+        ).is_error
