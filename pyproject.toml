@@ -1,6 +1,6 @@
 [project]
 name = "my-garmin-mcp"
-version = "0.7.0"
+version = "0.8.0"
 description = "Personal MCP server exposing Garmin data to Claude"
 license = "MIT"
 license-files = ["LICENSE"]

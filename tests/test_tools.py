@@ -49,6 +49,28 @@ class FakeApi:
             "stressValuesArray": [[0, 20], [60_000, 40], [120_000, -1]],
         }
 
+    def get_spo2_data(self, day):
+        self.calls.append(f"spo2 {day}")
+        if day.endswith("-02"):
+            return {}
+        return {
+            "calendarDate": day,
+            "averageSpO2": 95,
+            "lowestSpO2": 89,
+            "spO2HourlyAverages": [[0, 96], [60_000, 94], [3_600_000, 0]],
+        }
+
+    def get_respiration_data(self, day):
+        self.calls.append(f"resp {day}")
+        if day.endswith("-02"):
+            return {"respirationValuesArray": []}
+        return {
+            "calendarDate": day,
+            "lowestRespirationValue": 10,
+            "highestRespirationValue": 20,
+            "respirationValuesArray": [[0, 14], [60_000, 15], [120_000, -1]],
+        }
+
     def get_training_readiness(self, day):
         self.calls.append(f"tr {day}")
         if day.endswith("-02"):
@@ -271,3 +293,49 @@ async def test_get_training_readiness_rejects_long_range_and_bad_date():
         assert (
             await client.call_tool("get_training_readiness", {"start_date": "nope", "end_date": "2026-10-01"})
         ).is_error
+
+
+async def test_get_spo2_returns_days_and_skips_empty_ones():
+    async with session() as client:
+        data = _data(await client.call_tool("get_spo2", {"start_date": "2026-10-01", "end_date": "2026-10-03"}))
+        assert data["count"] == 2
+        assert [d["date"] for d in data["spo2"]] == ["2026-10-01", "2026-10-03"]
+        assert data["spo2"][0]["readings"] == [["00:00", 95]]
+        assert (data["spo2"][0]["avg_spo2"], data["spo2"][0]["lowest_spo2"]) == (95, 89)
+
+
+async def test_get_spo2_makes_one_request_per_day():
+    api = FakeApi()
+    async with session(lambda *_: api) as client:
+        _data(await client.call_tool("get_spo2", {"start_date": "2026-10-01", "end_date": "2026-10-03"}))
+    assert sorted(api.calls) == ["spo2 2026-10-01", "spo2 2026-10-02", "spo2 2026-10-03"]
+
+
+async def test_get_spo2_rejects_long_range_and_bad_date():
+    async with session() as client:
+        assert (await client.call_tool("get_spo2", {"start_date": "2026-10-01", "end_date": "2026-10-08"})).is_error
+        assert (await client.call_tool("get_spo2", {"start_date": "nope", "end_date": "2026-10-01"})).is_error
+
+
+async def test_get_respiration_returns_days_and_skips_empty_ones():
+    async with session() as client:
+        data = _data(await client.call_tool("get_respiration", {"start_date": "2026-10-01", "end_date": "2026-10-03"}))
+        assert data["count"] == 2
+        assert [d["date"] for d in data["respiration"]] == ["2026-10-01", "2026-10-03"]
+        assert data["respiration"][0]["readings"] == [["00:00", 14.5]]
+        assert (data["respiration"][0]["lowest_respiration"], data["respiration"][0]["highest_respiration"]) == (10, 20)
+
+
+async def test_get_respiration_makes_one_request_per_day():
+    api = FakeApi()
+    async with session(lambda *_: api) as client:
+        _data(await client.call_tool("get_respiration", {"start_date": "2026-10-01", "end_date": "2026-10-03"}))
+    assert sorted(api.calls) == ["resp 2026-10-01", "resp 2026-10-02", "resp 2026-10-03"]
+
+
+async def test_get_respiration_rejects_long_range_and_bad_date():
+    async with session() as client:
+        assert (
+            await client.call_tool("get_respiration", {"start_date": "2026-10-01", "end_date": "2026-10-08"})
+        ).is_error
+        assert (await client.call_tool("get_respiration", {"start_date": "nope", "end_date": "2026-10-01"})).is_error

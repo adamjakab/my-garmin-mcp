@@ -36,7 +36,8 @@ What the `garminconnect` library can reach, and which parts this server exposes.
 | &nbsp;&nbsp;↳ Weather | Yes (extra `weather`) |
 | &nbsp;&nbsp;↳ Gear used | Yes (extra `gear`) |
 | Daily summary, steps, floors | No |
-| Respiration, SpO2 | No |
+| SpO2 | Yes (`get_spo2`) |
+| Respiration | Yes (`get_respiration`) |
 | Intensity minutes | No |
 | Hydration | No |
 | Training status | No |

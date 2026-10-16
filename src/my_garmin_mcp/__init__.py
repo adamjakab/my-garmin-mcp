@@ -1,2 +1,2 @@
 # Keep in step with `version` in pyproject.toml (tests/test_version.py checks it).
-__version__ = "0.7.0"
+__version__ = "0.8.0"

@@ -414,6 +414,113 @@ def stress_day(day: str, payload: dict[str, Any] | None, bucket_minutes: int = 3
     return _clean(result)
 
 
+def _in_range(value: Any, low: int | float, high: int | float) -> int | float | None:
+    if isinstance(value, bool) or not isinstance(value, int | float) or not low <= value <= high:
+        return None
+    return value
+
+
+def _local_buckets(
+    payload: dict[str, Any], key: str, valid: Any, bucket_minutes: int, digits: int | None
+) -> tuple[list[int | float], list[list[Any]]]:
+    """Valid readings from `payload[key]` ([epoch ms GMT, value] rows) and their mean per local-time bucket."""
+    start_local, start_gmt = _epoch_ms(payload.get("startTimestampLocal")), _epoch_ms(payload.get("startTimestampGMT"))
+    offset = start_local - start_gmt if start_local is not None and start_gmt is not None else 0
+    rows = payload.get(key)
+    buckets: dict[int, list[int | float]] = {}
+    values: list[int | float] = []
+    for row in rows if isinstance(rows, list | tuple) else []:
+        if not isinstance(row, list | tuple) or len(row) < 2:
+            continue
+        ts, value = row[0], valid(row[1])
+        if isinstance(ts, bool) or not isinstance(ts, int | float) or value is None:
+            continue
+        local = datetime.fromtimestamp((ts + offset) / 1000, UTC)
+        start = (local.hour * 60 + local.minute) // bucket_minutes * bucket_minutes
+        buckets.setdefault(start, []).append(value)
+        values.append(value)
+    readings = [
+        [f"{start // 60:02d}:{start % 60:02d}", round(sum(vals) / len(vals), digits)]
+        for start, vals in sorted(buckets.items())
+    ]
+    return values, readings
+
+
+def _spo2_value(value: Any) -> int | float | None:
+    """A SpO2 percentage 1-100; None for 0, negatives, null and non-numbers."""
+    return _in_range(value, 1, 100)
+
+
+def spo2_day(day: str, payload: dict[str, Any] | None, bucket_minutes: int = 60) -> dict[str, Any] | None:
+    """All-day SpO2: average/lowest/latest/sleep average and a mean per local-time bucket.
+
+    `spO2HourlyAverages` holds [epoch ms GMT, percent] pairs; they are shifted to local wall-clock time with the
+    offset between the payload's local and GMT start timestamps before bucketing. Zero, negative and null values
+    are no reading. None when there is neither a reading nor a summary value; odd payloads never raise.
+    """
+    if not isinstance(payload, dict):
+        return None
+    values, readings = _local_buckets(payload, "spO2HourlyAverages", _spo2_value, bucket_minutes, None)
+    avg = _spo2_value(payload.get("averageSpO2"))
+    if avg is None and values:
+        avg = round(sum(values) / len(values))
+    lowest = _spo2_value(payload.get("lowestSpO2"))
+    if lowest is None and values:
+        lowest = min(values)
+    latest = _spo2_value(payload.get("latestSpO2"))
+    sleep_avg = _spo2_value(payload.get("avgSleepSpO2"))
+    if not values and avg is None and lowest is None and latest is None and sleep_avg is None:
+        return None
+    result = {
+        "date": payload.get("calendarDate") or day,
+        "avg_spo2": avg,
+        "lowest_spo2": lowest,
+        "latest_spo2": latest,
+        "avg_sleep_spo2": sleep_avg,
+    }
+    if readings:
+        result.update({"bucket_minutes": bucket_minutes, "columns": ["time", "value"], "readings": readings})
+    return _clean(result)
+
+
+def _breaths(value: Any) -> int | float | None:
+    """Breaths per minute above 0 and at most 100; None for 0, negatives (no reading), null and non-numbers."""
+    value = _in_range(value, 0, 100)
+    return value or None
+
+
+def respiration_day(day: str, payload: dict[str, Any] | None, bucket_minutes: int = 30) -> dict[str, Any] | None:
+    """All-day respiration: lowest/highest, waking and sleep averages and a mean rate per local-time bucket.
+
+    `respirationValuesArray` holds [epoch ms GMT, breaths/min] pairs about every 2 minutes; they are shifted to
+    local wall-clock time as in `stress_day`. Zero, negative and null values are no reading. None when there is
+    neither a reading nor a summary value; odd payloads never raise.
+    """
+    if not isinstance(payload, dict):
+        return None
+    values, readings = _local_buckets(payload, "respirationValuesArray", _breaths, bucket_minutes, 1)
+    lowest = _breaths(payload.get("lowestRespirationValue"))
+    if lowest is None and values:
+        lowest = min(values)
+    highest = _breaths(payload.get("highestRespirationValue"))
+    if highest is None and values:
+        highest = max(values)
+    waking = _breaths(payload.get("avgWakingRespirationValue"))
+    sleeping = _breaths(payload.get("avgSleepRespirationValue"))
+    if not values and lowest is None and highest is None and waking is None and sleeping is None:
+        return None
+    result = {
+        "date": payload.get("calendarDate") or day,
+        "lowest_respiration": lowest,
+        "highest_respiration": highest,
+        "avg_waking_respiration": waking,
+        "avg_sleep_respiration": sleeping,
+    }
+    if readings:
+        result.update({"bucket_minutes": bucket_minutes, "columns": ["time", "value"], "readings": readings})
+    return _clean(result)
+
+
 def _tr_number(value: Any) -> int | float | None:
     return None if isinstance(value, bool) or not isinstance(value, int | float) else value
 
