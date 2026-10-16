@@ -49,6 +49,18 @@ class FakeApi:
             "stressValuesArray": [[0, 20], [60_000, 40], [120_000, -1]],
         }
 
+    def get_user_summary(self, day):
+        self.calls.append(f"summary {day}")
+        if day.endswith("-02"):
+            return {"calendarDate": day, "dailyStepGoal": 8000}
+        return {
+            "calendarDate": day,
+            "totalSteps": 9000,
+            "dailyStepGoal": 8000,
+            "floorsAscended": 11.6,
+            "moderateIntensityMinutes": 20,
+        }
+
     def get_spo2_data(self, day):
         self.calls.append(f"spo2 {day}")
         if day.endswith("-02"):
@@ -315,6 +327,32 @@ async def test_get_spo2_rejects_long_range_and_bad_date():
     async with session() as client:
         assert (await client.call_tool("get_spo2", {"start_date": "2026-10-01", "end_date": "2026-10-08"})).is_error
         assert (await client.call_tool("get_spo2", {"start_date": "nope", "end_date": "2026-10-01"})).is_error
+
+
+async def test_get_daily_summary_returns_days_and_skips_empty_ones():
+    async with session() as client:
+        data = _data(
+            await client.call_tool("get_daily_summary", {"start_date": "2026-10-01", "end_date": "2026-10-03"})
+        )
+        assert data["count"] == 2
+        assert [d["date"] for d in data["daily_summary"]] == ["2026-10-01", "2026-10-03"]
+        assert data["daily_summary"][0]["steps"] == 9000
+        assert data["daily_summary"][0]["floors_climbed"] == 12
+
+
+async def test_get_daily_summary_makes_one_request_per_day():
+    api = FakeApi()
+    async with session(lambda *_: api) as client:
+        _data(await client.call_tool("get_daily_summary", {"start_date": "2026-10-01", "end_date": "2026-10-03"}))
+    assert sorted(api.calls) == ["summary 2026-10-01", "summary 2026-10-02", "summary 2026-10-03"]
+
+
+async def test_get_daily_summary_rejects_long_range_and_bad_date():
+    async with session() as client:
+        assert (
+            await client.call_tool("get_daily_summary", {"start_date": "2026-09-01", "end_date": "2026-10-02"})
+        ).is_error
+        assert (await client.call_tool("get_daily_summary", {"start_date": "nope", "end_date": "2026-10-01"})).is_error
 
 
 async def test_get_respiration_returns_days_and_skips_empty_ones():

@@ -5,6 +5,7 @@ from my_garmin_mcp.garmin.extract import (
     activity_list_item,
     body_battery_days,
     bucket_details,
+    daily_summary_day,
     flatten_activity,
     heart_rate_day,
     hrv_summary,
@@ -593,3 +594,54 @@ def test_respiration_day_summary_only():
 )
 def test_respiration_day_without_data_is_none(payload):
     assert respiration_day("d", payload) is None
+
+
+def test_daily_summary_day_maps_all_fields():
+    payload = {
+        "calendarDate": "2026-10-01",
+        "totalSteps": 9000,
+        "dailyStepGoal": 8000,
+        "totalDistanceMeters": 7200.5,
+        "floorsAscended": 11.6,
+        "userFloorsAscendedGoal": 10,
+        "moderateIntensityMinutes": 20,
+        "vigorousIntensityMinutes": 5,
+        "intensityMinutesGoal": 150,
+        "totalKilocalories": 2400,
+        "activeKilocalories": 600.0,
+    }
+    assert daily_summary_day("d", payload) == {
+        "date": "2026-10-01",
+        "steps": 9000,
+        "distance_m": 7200.5,
+        "floors_climbed": 12,
+        "moderate_intensity_min": 20,
+        "vigorous_intensity_min": 5,
+        "calories": 2400,
+        "active_calories": 600,
+        "step_goal": 8000,
+        "floors_goal": 10,
+        "intensity_goal_min": 150,
+    }
+
+
+def test_daily_summary_day_tolerates_missing_keys_and_falls_back_to_day():
+    assert daily_summary_day("2026-10-01", {"totalSteps": 0, "floorsAscendedGoal": 10}) == {
+        "date": "2026-10-01",
+        "steps": 0,
+        "floors_goal": 10,
+    }
+
+
+def test_daily_summary_day_drops_goal_only_payload():
+    assert daily_summary_day("d", {"dailyStepGoal": 8000, "intensityMinutesGoal": 150}) is None
+
+
+@pytest.mark.parametrize("payload", [None, {}, [], "x", {"totalSteps": None, "floorsAscended": None}])
+def test_daily_summary_day_empty_payloads(payload):
+    assert daily_summary_day("d", payload) is None
+
+
+def test_daily_summary_day_ignores_bool_negative_and_string_values():
+    payload = {"totalSteps": True, "totalDistanceMeters": -5, "floorsAscended": "3", "totalKilocalories": 2000}
+    assert daily_summary_day("d", payload) == {"date": "d", "calories": 2000}

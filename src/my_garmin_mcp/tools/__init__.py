@@ -5,6 +5,7 @@ from . import (
     activities,
     activity,
     body_battery,
+    daily_summary,
     heart_rate,
     hrv,
     ping,
@@ -34,6 +35,7 @@ def register_tools(server: MCPServer, garmin: GarminClient) -> None:
         training_readiness,
         vo2max,
         weight,
+        daily_summary,
         activities,
         activity,
     ):

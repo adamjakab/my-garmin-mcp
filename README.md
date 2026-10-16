@@ -35,10 +35,10 @@ What the `garminconnect` library can reach, and which parts this server exposes.
 | &nbsp;&nbsp;↳ Power zones | Yes (extra `power_zones`) |
 | &nbsp;&nbsp;↳ Weather | Yes (extra `weather`) |
 | &nbsp;&nbsp;↳ Gear used | Yes (extra `gear`) |
-| Daily summary, steps, floors | No |
+| Daily summary, steps, floors | Yes (`get_daily_summary`) |
 | SpO2 | Yes (`get_spo2`) |
 | Respiration | Yes (`get_respiration`) |
-| Intensity minutes | No |
+| Intensity minutes | Yes (`get_daily_summary`) |
 | Hydration | No |
 | Training status | No |
 | Endurance score, hill score | No |
