@@ -19,3 +19,24 @@ SpO2 and respiration are listed under "More Garmin data" in `work/future-improve
 - Remove the SpO2/respiration mention from `work/future-improvements.md` when done.
 
 Depends on: none
+
+## Outcome
+
+> Implemented: 2026-10-16
+
+Added two per-day tools, `get_spo2` and `get_respiration`, mirroring `get_stress`: one `per_day` request per day, pure extractors `spo2_day` and `respiration_day` in `garmin/extract.py`, and `MAX_DAYS_SPO2` / `MAX_DAYS_RESPIRATION` (7 days) in `garmin/dates.py`. Each returns a per-day summary plus a bucketed `[local time, value]` series (SpO2 60 min, respiration 30 min). Version bumped to 0.8.0; README, AGENTS.md and `work/future-improvements.md` updated.
+
+### Deviations from the plan
+
+- Payload keys could not be verified: `garminconnect` 0.3.17 only proxies the endpoints (`get_spo2_data`, `get_respiration_data`), so the plan's hypothesised keys were used unchanged. For SpO2 only the `spO2HourlyAverages` `[ts, value]` series is read; the `continuousReadingDTOList` dict-row fallback was not implemented. Missing summary keys are tolerated.
+- Shared bucketing is a new private helper `_local_buckets` used by both new extractors; `stress_day` is untouched.
+- `docs/architecture/overview.md` and the `local-dev-env` skill list no tools, so they were not edited.
+- SpO2 bucket means are integers (`round(x)`), respiration means `round(x, 1)`.
+
+### Validation
+
+- `uv run ruff check .` — pass
+- `uv run ruff format --check src tests` — pass (34 files); whole-repo check fails only on the plan markdown under `work/`
+- `uv run pytest` — 118 passed (unit plus end-to-end MCP client test)
+- `uv lock --check` — pass
+- Manual check against a real Garmin account — not run (needs credentials)
