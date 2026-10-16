@@ -20,3 +20,24 @@ Training readiness is listed under "Ideas for later" in `work/future-improvement
 - Training status is a separate item in the same ideas bullet and is out of scope here.
 
 Depends on: none
+
+## Outcome
+
+> Implemented: 2026-10-16
+
+Added the `get_training_readiness` MCP tool (one request per day via `per_day`, calling `Garmin.get_training_readiness` through `GarminClient`). The pure `training_readiness_day` in `garmin/extract.py` picks the latest snapshot per day and returns score, level, short feedback, local time, sleep score, recovery minutes/phase and the five factors (percent and feedback). The tool is registered in `tools/__init__.py`, the README, `AGENTS.md` and `work/future-improvements.md` are updated, and the version is bumped to 0.7.0.
+
+### Deviations from the plan
+
+- No new `MAX_DAYS_TRAINING_READINESS` constant: the tool uses the existing `MAX_DAYS_PER_DAY_TOOLS` (31), as the sleep, HRV and resting HR tools do.
+- README: besides the new row, the "Training readiness, training status | No" row became "Training status | No".
+- `docs/` had no tool counts or lists needing change, so no "Last updated" dates were touched.
+- The real payload's `timestampLocal` format is unconfirmed; `time` is parsed best effort and omitted on failure.
+
+### Validation
+
+- `uv run ruff check .` and `uv run ruff format --check .`: pass
+- `uv run pytest tests/test_extract.py tests/test_tools.py tests/test_version.py`: 77 passed
+- `uv run pytest tests/test_e2e.py`: 4 passed
+- `uv lock --check`: pass
+- Type check: none configured, not run. Manual validation against Garmin: not run (no credentials).
