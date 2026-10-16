@@ -19,3 +19,20 @@ Stress is one of the Garmin health signals not yet reachable from Claude, and it
 - Open question for planning: exact output fields and sampling interval of the readings.
 
 Depends on: none
+
+## Outcome
+
+> Implemented: 2026-10-16
+
+Added the `get_stress` tool (`src/my_garmin_mcp/tools/stress.py`): per day, average and max stress, minutes in rest/low/medium/high and `[local time, level]` readings in 30-minute buckets, from `Garmin.get_stress_data`. Payload shaping is the pure `stress_day` in `garmin/extract.py`; the range limit is `MAX_DAYS_STRESS = 7` in `garmin/dates.py`. Version bumped to 0.6.0.
+
+### Deviations from the plan
+
+`stress_day` omits `bucket_minutes`, `columns` and `readings` when a day has a summary but no valid readings (the plan left this open).
+
+### Validation
+
+- `ruff check` and `ruff format --check`: pass
+- `uv run pytest`: 75 passed (includes the end-to-end MCP client test)
+- `uv lock --check`: pass
+- Manual check against a live Garmin account: not run (needs credentials).
