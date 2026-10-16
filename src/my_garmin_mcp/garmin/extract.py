@@ -590,3 +590,48 @@ def training_readiness_day(day: str, payload: list[dict[str, Any]] | dict[str, A
             "factors": factors or None,
         }
     )
+
+
+_DAILY_SUMMARY_FIELDS = {
+    "steps": "totalSteps",
+    "distance_m": "totalDistanceMeters",
+    "floors_climbed": "floorsAscended",
+    "moderate_intensity_min": "moderateIntensityMinutes",
+    "vigorous_intensity_min": "vigorousIntensityMinutes",
+    "calories": "totalKilocalories",
+    "active_calories": "activeKilocalories",
+}
+_DAILY_SUMMARY_GOALS = {
+    "step_goal": ("dailyStepGoal",),
+    "floors_goal": ("userFloorsAscendedGoal", "floorsAscendedGoal"),
+    "intensity_goal_min": ("intensityMinutesGoal",),
+}
+
+
+def _summary_number(value: Any) -> int | float | None:
+    """A non-negative number, whole values as int; None for bools, negatives, null and non-numbers."""
+    number = _in_range(value, 0, 10_000_000)
+    if isinstance(number, float):
+        return int(number) if number.is_integer() else round(number, 1)
+    return number
+
+
+def daily_summary_day(day: str, payload: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Garmin's daily activity summary: steps, distance, floors, intensity minutes, calories and their goals.
+
+    Floors are rounded to a whole number. None when no activity value is present (goals alone mean the device was
+    not worn); odd payloads never raise.
+    """
+    if not isinstance(payload, dict):
+        return None
+    values = {name: _summary_number(payload.get(key)) for name, key in _DAILY_SUMMARY_FIELDS.items()}
+    if all(v is None for v in values.values()):
+        return None
+    if values["floors_climbed"] is not None:
+        values["floors_climbed"] = round(values["floors_climbed"])
+    goals = {
+        name: next((n for n in map(_summary_number, map(payload.get, keys)) if n is not None), None)
+        for name, keys in _DAILY_SUMMARY_GOALS.items()
+    }
+    date = payload.get("calendarDate")
+    return _clean({"date": date if isinstance(date, str) and date else day, **values, **goals})

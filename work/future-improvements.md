@@ -6,8 +6,7 @@ Notes, not committed work. Turn an item into a work item (`work/open/`) when it 
 
 Not exposed yet; `garminconnect` has getters for all of them.
 
-- Steps
-- Training status, hydration, floors, intensity minutes
+- Training status, hydration
 - Devices, user summary, workouts (list and schedule), goals, badges
 - Lactate threshold, FTP, hill score and other performance metrics
 - `get_activities`: filter by activity type, and paging if a range gets long

@@ -73,6 +73,7 @@ async def test_ping_with_valid_key(url):
                 "get_training_readiness",
                 "get_vo2max",
                 "get_weight",
+                "get_daily_summary",
                 "get_activities",
                 "get_activity",
             ]

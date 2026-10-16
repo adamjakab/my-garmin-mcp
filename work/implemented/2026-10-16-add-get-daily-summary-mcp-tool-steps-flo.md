@@ -18,3 +18,21 @@ The server covers sleep, HRV, heart rate, stress, SpO2 and more, but not the bas
 - Open question for planning: whether to also expose intraday step buckets or only daily totals (default: daily totals only).
 
 Depends on: none
+
+## Outcome
+
+> Implemented: 2026-10-16
+
+Added the `get_daily_summary` tool: one `get_user_summary(date)` request per day through `per_day` (max 31 days, `MAX_DAYS_DAILY_SUMMARY`), shaped by the pure extractor `daily_summary_day` in `garmin/extract.py`. Output is `{start_date, end_date, count, daily_summary: [...]}` with steps, distance, floors, intensity minutes, calories and the three goals. Days with no activity value (including goal-only payloads) are omitted. Version bumped to 0.9.0; README, AGENTS.md and `work/future-improvements.md` updated.
+
+### Deviations from the plan
+
+The extractor also accepts `floorsAscendedGoal` as a fallback for the floors goal, since the key name is unverified. Non-integer values other than floors are rounded to 1 decimal. The payload keys remain unverified against a real Garmin payload (no credentials available).
+
+### Validation
+
+- `ruff check` and `ruff format --check`: pass.
+- Tests: pass (122 across test_extract, test_version, test_tools, test_e2e; full suite 130 at review).
+- `uv lock --check`: pass.
+- Type check: none configured, not run.
+- Manual validation against a real Garmin payload: not run (no credentials).
